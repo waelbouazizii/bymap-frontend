@@ -14,6 +14,7 @@ config.resolver.unstable_enablePackageExports = false;
 const WEB_SHIMS = {
   'react-native-view-shot': path.resolve(__dirname, 'src/web-shims/view-shot.js'),
   'expo-secure-store':      path.resolve(__dirname, 'src/web-shims/secure-store.js'),
+  'react-native-webview':   path.resolve(__dirname, 'src/web-shims/webview.js'),
 };
 
 const { resolveRequest: originalResolveRequest } = config.resolver;
