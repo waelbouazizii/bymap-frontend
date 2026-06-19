@@ -154,6 +154,7 @@ const buildGlobeHTML = (lat, lng, styleKey = 'satellite') => {
   return `<!DOCTYPE html>
 <html>
 <head>
+<script>window.ReactNativeWebView=window.ReactNativeWebView||{postMessage:function(d){window.parent.postMessage(d,'*');}}</script>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
 <style>
@@ -362,6 +363,7 @@ const buildMapHTML = (lat, lng, pickMode = false, zoneRadius = 1000, styleKey = 
   return `<!DOCTYPE html>
 <html>
 <head>
+<script>window.ReactNativeWebView=window.ReactNativeWebView||{postMessage:function(d){window.parent.postMessage(d,'*');}}</script>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -966,6 +968,14 @@ export default function MapScreen() {
     fetchAndInjectZoneDots();
     fetchAndInjectAdminZones();
   }, [ready, mode]);
+
+  // On web the react-native-webview postMessage bridge may not fire READY reliably.
+  // Force ready after 2s so the loading overlay never blocks the map permanently.
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const t = setTimeout(() => setReady(true), 2000);
+    return () => clearTimeout(t);
+  }, [mode, mapStyle]);
 
   // Pull-to-refresh : glisser vers le bas depuis le haut de la carte
   const fetchDotsRef = useRef(null);
