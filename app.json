@@ -1,0 +1,73 @@
+{
+  "expo": {
+    "name": "ByMap",
+    "slug": "ByMap",
+    "scheme": "bymap",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/logo.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#140729"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.bymap.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "ByMap utilise votre position pour afficher votre emplacement sur la carte.",
+        "NSLocationAlwaysUsageDescription": "ByMap utilise votre position pour le suivi en temps réel.",
+        "NSMicrophoneUsageDescription": "ByMap utilise le microphone pour les appels vocaux.",
+        "NSCameraUsageDescription": "ByMap utilise la caméra pour les appels vidéo."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/logo.png",
+        "backgroundColor": "#140729"
+      },
+      "package": "com.bymap.app",
+      "usesCleartextTraffic": true,
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyDIJ9XX2ZvRKCJcFRrl-lRanEtFUow4piM"
+        }
+      },
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "RECORD_AUDIO",
+        "CAMERA",
+        "MODIFY_AUDIO_SETTINGS",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/logo.png"
+    },
+    "plugins": [
+      "expo-dev-client",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "ByMap utilise votre position pour afficher votre emplacement sur la carte.",
+          "locationAlwaysAndWhenInUsePermission": "ByMap utilise votre position pour le suivi en temps réel."
+        }
+      ],
+      "expo-video",
+      "expo-web-browser",
+      "expo-audio",
+      "expo-secure-store"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "f4bfa777-8c91-437f-b037-c8db0ef5eb8d"
+      }
+    }
+  }
+}
