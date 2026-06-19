@@ -10,6 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getAccessToken } from '../security/secureStorage';
 import { API_URL } from '../environments/environment';
 import { useCall } from '../context/CallContext';
 import EmptyState from '../components/EmptyState';
@@ -42,7 +43,7 @@ export default function Messages() {
   // ── Fetch messages ─────────────────────────────────────────────────────────
   const fetchMessages = useCallback(async () => {
     try {
-      const token = await AsyncStorage.getItem('accessToken');
+      const token = await getAccessToken();
       if (!token) return;
       const res = await fetch(`${API_URL}/messages/${recipient._id}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -69,7 +70,7 @@ export default function Messages() {
     if (!trimmed || sending) return;
     setSending(true);
     try {
-      const token = await AsyncStorage.getItem('accessToken');
+      const token = await getAccessToken();
       const res = await fetch(`${API_URL}/messages`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },

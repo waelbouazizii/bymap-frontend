@@ -23,8 +23,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getCurrentUser, logout as apiLogout, checkFavorite, toggleFavorite } from '../utils/api';
+import { getAccessToken } from '../security/secureStorage';
+import { getActiveServerUrl } from '../utils/serverBalancer';
+import TUNISIA from '../../assets/tunisia.json';
 import { useTranslation } from 'react-i18next';
 import BottomTabBar from '../components/BottomTabBar';
 import { PubCardSkeleton } from '../components/SkeletonLoader';
@@ -36,9 +38,69 @@ const API_URL = environment.apiUrl;
 const SERVER_BASE = API_URL.replace('/api', '');
 const { width } = Dimensions.get('window');
 
+// Module-level cache so /zones is only fetched once per app session.
+let _zonesCache = null;
+async function fetchZonesCache() {
+  if (_zonesCache) return _zonesCache;
+  try {
+    const res  = await fetch(`${API_URL}/zones`);
+    const data = await res.json();
+    _zonesCache = Array.isArray(data) ? data : (data.zones || []);
+  } catch { _zonesCache = []; }
+  return _zonesCache;
+}
+
+// Resolves a zone/delegation name to its parent gouvernorat.
+// Checks the backend /zones API first (custom zones like "Lessouda"),
+// then falls back to Tunisia.json (standard administrative delegations).
+async function resolveZoneParent(name) {
+  if (!name) return null;
+  const n = name.toLowerCase();
+
+  // 1. Backend zones API — handles admin-created zones
+  const zones = await fetchZonesCache();
+  const apiMatch = zones.find(z => z.name && z.name.toLowerCase() === n);
+  if (apiMatch?.gouvernorat) return apiMatch.gouvernorat;
+
+  // 2. Tunisia.json — handles standard delegations (e.g. "Ariana Ville")
+  for (const [gov, rows] of Object.entries(TUNISIA)) {
+    if (gov.toLowerCase() === n) return null; // it IS a governorate, no parent
+    const delegs = new Set(rows.map(r => r.delegation?.toLowerCase()));
+    if (delegs.has(n)) return gov;
+  }
+  return null;
+}
+
 const fixMediaUrl = (url) => {
   if (!url) return null;
-  return url.replace(/^https?:\/\/[^/]+/, SERVER_BASE);
+  // Backend stores raw http://IP:PORT/uploads/... URLs (its own internal address).
+  // Convert http://IP:PORT/path → https://IP.nip.io/path so React Native can load it:
+  //  - nip.io DNS resolves IP.nip.io to IP (free, wildcard DNS service)
+  //  - HTTPS avoids Android cleartext-traffic block
+  //  - Points directly to the server that actually holds the file
+  const ipMatch = url.match(/^https?:\/\/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(:\d+)?(\/.*)?$/);
+  if (ipMatch) return `https://${ipMatch[1]}.nip.io${ipMatch[3] || '/'}`;
+  // Domain-based absolute URL — normalise host to the currently-active proxy server
+  const base = getActiveServerUrl().replace('/api', '');
+  if (/^https?:\/\//.test(url)) return url.replace(/^https?:\/\/[^/]+/, base);
+  return base + (url.startsWith('/') ? url : '/' + url);
+};
+
+// Extract display URL from a media item — handles strings and objects with various backend field names
+const getMediaUri = (m) => {
+  if (!m) return null;
+  const raw = (typeof m === 'string') ? m : (m.url || m.path || m.uri || m.src || m.filename || null);
+  return fixMediaUrl(raw);
+};
+
+// True when media item represents an image — handles MIME types, category names, and URL extension fallback
+const isImageMedia = (m) => {
+  if (!m) return false;
+  if (typeof m === 'string') return /\.(jpe?g|png|gif|webp|bmp|heic|avif)(\?.*)?$/i.test(m);
+  const t = (m.type || m.mimetype || m.mimeType || m.contentType || '').toLowerCase();
+  if (t === 'image' || t.startsWith('image/')) return true;
+  const url = m.url || m.path || m.uri || m.src || m.filename || '';
+  return /\.(jpe?g|png|gif|webp|bmp|heic|avif)(\?.*)?$/i.test(url);
 };
 
 // Temps relatif : "2min", "3h", "1j"
@@ -155,7 +217,7 @@ const PubCard = ({ item, onPress, onContact, currentUser }) => {
     if (!currentUser) { onContact(); return; }
     setLikeLoading(true);
     try {
-      const token = await AsyncStorage.getItem('accessToken');
+      const token = await getAccessToken();
       const res   = await fetch(`${API_URL}/publications/${item._id}/like`, {
         method: 'POST', headers: { Authorization: `Bearer ${token}` },
       });
@@ -185,8 +247,8 @@ const PubCard = ({ item, onPress, onContact, currentUser }) => {
     ? [item.localisation?.ville, item.localisation?.gouvernorat].filter(Boolean).join(' · ')
     : [item.localisationDebut?.ville, '→', item.localisationFin?.ville].filter(Boolean).join(' ');
 
-  const firstImage = item.medias?.find(m => m.type === 'image');
-  const imageUri   = firstImage ? fixMediaUrl(firstImage.url) : null;
+  const firstImage = item.medias?.find(isImageMedia);
+  const imageUri   = getMediaUri(firstImage);
   const hasImage   = !!imageUri && !imgError;
 
   return (
@@ -202,7 +264,7 @@ const PubCard = ({ item, onPress, onContact, currentUser }) => {
               resizeMode="cover"
               onLoadStart={() => setImgLoading(true)}
               onLoadEnd={() => setImgLoading(false)}
-              onError={() => { setImgError(true); setImgLoading(false); }}
+              onError={() => { console.warn('[ByMap] Image failed to load:', imageUri); setImgError(true); setImgLoading(false); }}
             />
             {imgLoading && <View style={cardStyles.imageLoader}><ActivityIndicator size="small" color={accent} /></View>}
             <View style={cardStyles.heroBadge}>
@@ -386,15 +448,22 @@ export default function LocalScreen() {
     try {
       if (pageNum === 1) setLoading(true); else setLoadingMore(true);
 
+      // Resolve the zone's parent gouvernorat (e.g. "Lessouda" → "Sidi Bouzid").
+      // Checks backend /zones API (custom admin zones) then Tunisia.json.
+      // When a parent is found we query the broader gouvernorat and filter
+      // client-side so only posts tagged to this specific zone appear.
+      const parentGov  = await resolveZoneParent(zoneName);
+      const queryVille = parentGov || zoneName;
+
       const params = new URLSearchParams({
         page:  pageNum,
         limit: 200,
         ...(modeFilter !== 'all' && { mode: modeFilter }),
-        ...(zoneName             && { ville: zoneName }),
+        ...(queryVille           && { ville: queryVille }),
         ...(search.trim()        && { search: search.trim() }),
       });
 
-      const token = await AsyncStorage.getItem('accessToken');
+      const token = await getAccessToken();
       const res   = await fetch(`${API_URL}/publications?${params}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
@@ -402,7 +471,25 @@ export default function LocalScreen() {
       if (!res.ok) throw new Error('Erreur réseau');
       const data = await res.json();
 
-      const incoming = data.publications ?? [];
+      let incoming = data.publications ?? [];
+      // Debug: log raw media structure so we can verify the backend format
+      if (__DEV__ && incoming.length > 0) {
+        console.log('[ByMap] pub keys:', Object.keys(incoming[0]));
+        console.log('[ByMap] pub.medias:', JSON.stringify(incoming[0]?.medias?.slice(0, 2)));
+      }
+      // Client-side filter when we resolved a parent governorate — keeps only
+      // posts whose gouvernorat, delegation, or localite matches the zone name.
+      if (parentGov && zoneName) {
+        const zn = zoneName.toLowerCase();
+        incoming = incoming.filter(p => {
+          const loc = p.localisation || {};
+          return (
+            (loc.gouvernorat && loc.gouvernorat.toLowerCase() === zn) ||
+            (loc.delegation  && loc.delegation.toLowerCase()  === zn) ||
+            (loc.localite    && loc.localite.toLowerCase()    === zn)
+          );
+        });
+      }
       setPubs(prev => {
         const next = reset || pageNum === 1 ? incoming : [...prev, ...incoming];
         if (next.length > prevPubsCount.current) {
@@ -463,7 +550,7 @@ export default function LocalScreen() {
     }
     const pubId = match[1];
     try {
-      const token = await AsyncStorage.getItem('accessToken');
+      const token = await getAccessToken();
       const res   = await fetch(`${API_URL}/publications/${pubId}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });

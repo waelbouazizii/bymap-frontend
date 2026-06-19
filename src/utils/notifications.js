@@ -7,6 +7,7 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getAccessToken } from '../security/secureStorage';
 import { API_URL } from '../environments/environment';
 
 Notifications.setNotificationHandler({
@@ -56,7 +57,7 @@ export async function registerForPushNotifications() {
 
 export async function savePushTokenToServer(token) {
   try {
-    const accessToken = await AsyncStorage.getItem('accessToken');
+    const accessToken = await getAccessToken();
     if (!accessToken || !token) return;
     await fetch(`${API_URL}/users/push-token`, {
       method: 'PUT',

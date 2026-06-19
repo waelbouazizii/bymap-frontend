@@ -10,6 +10,7 @@ import { useNavigation } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getAccessToken } from '../../security/secureStorage';
 import { API_URL } from '../../environments/environment';
 import { R, SP, T, HIT } from '../../theme/index';
 
@@ -57,7 +58,7 @@ export default function AdminNotifications() {
 
   const fetchNotifications = useCallback(async () => {
     try {
-      const token = await AsyncStorage.getItem('accessToken');
+      const token = await getAccessToken();
       const res   = await fetch(`${API_URL}/admin/notifications?limit=50`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });

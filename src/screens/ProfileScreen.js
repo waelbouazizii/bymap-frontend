@@ -10,20 +10,46 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getAccessToken } from '../security/secureStorage';
 import * as ImagePicker from 'expo-image-picker';
 import * as Sharing from 'expo-sharing';
 import ViewShot from 'react-native-view-shot';
 import QRCode from 'react-native-qrcode-svg';
 import { getCurrentUser, logout as apiLogout } from '../utils/api';
 import { environment } from '../environments/environment';
+import { getActiveServerUrl } from '../utils/serverBalancer';
 import { useTranslation } from 'react-i18next';
 import { changeAppLanguage, LANGUAGE_MAP, LANGUAGE_NAMES } from '../i18n/index';
 import BottomTabBar from '../components/BottomTabBar';
 import { useTheme } from '../theme/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const API_URL = environment.apiUrl;
+const API_URL     = environment.apiUrl;
+const SERVER_BASE = API_URL.replace('/api', '');
 
+const fixMediaUrl = (url) => {
+  if (!url) return null;
+  const ipMatch = url.match(/^https?:\/\/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(:\d+)?(\/.*)?$/);
+  if (ipMatch) return `https://${ipMatch[1]}.nip.io${ipMatch[3] || '/'}`;
+  const base = getActiveServerUrl().replace('/api', '');
+  if (/^https?:\/\//.test(url)) return url.replace(/^https?:\/\/[^/]+/, base);
+  return base + (url.startsWith('/') ? url : '/' + url);
+};
+
+const getMediaUri = (m) => {
+  if (!m) return null;
+  const raw = (typeof m === 'string') ? m : (m.url || m.path || m.uri || m.src || m.filename || null);
+  return fixMediaUrl(raw);
+};
+
+const isImageMedia = (m) => {
+  if (!m) return false;
+  if (typeof m === 'string') return /\.(jpe?g|png|gif|webp|bmp|heic|avif)(\?.*)?$/i.test(m);
+  const t = (m.type || m.mimetype || m.mimeType || m.contentType || '').toLowerCase();
+  if (t === 'image' || t.startsWith('image/')) return true;
+  const url = m.url || m.path || m.uri || m.src || m.filename || '';
+  return /\.(jpe?g|png|gif|webp|bmp|heic|avif)(\?.*)?$/i.test(url);
+};
 
 // ── Palette mint clair ─────────────────────────────────────────────────────────
 const C = {
@@ -184,7 +210,7 @@ function EditProfileView({ user, onSave }) {
   const uploadAvatar = async (asset) => {
     setUploading(true);
     try {
-      const token = await AsyncStorage.getItem('accessToken');
+      const token = await getAccessToken();
       const formData = new FormData();
       formData.append('avatar', { uri: asset.uri, name: `avatar_${Date.now()}.jpg`, type: 'image/jpeg' });
       const res = await fetch(`${API_URL}/users/me/avatar`, { method: 'PUT', headers: { 'Content-Type': 'multipart/form-data', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: formData });
@@ -198,7 +224,7 @@ function EditProfileView({ user, onSave }) {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const token = await AsyncStorage.getItem('accessToken');
+      const token = await getAccessToken();
       const [prenom, ...rest] = fullName.trim().split(' ');
       const nom = rest.join(' ');
       const res = await fetch(`${API_URL}/users/me`, { method: 'PUT', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ prenom, nom, phone, email, preferredZone }) });
@@ -251,7 +277,7 @@ function SettingsView({ onChangePassword }) {
   React.useEffect(() => {
     (async () => {
       try {
-        const token = await AsyncStorage.getItem('accessToken');
+        const token = await getAccessToken();
         const res   = await fetch(`${API_URL}/users/me/settings?_t=${Date.now()}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
         if (res.ok) {
           const data = await res.json();
@@ -274,7 +300,7 @@ function SettingsView({ onChangePassword }) {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const token = await AsyncStorage.getItem('accessToken');
+      const token = await getAccessToken();
       const res = await fetch(`${API_URL}/users/me/settings`, { method: 'PUT', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ language, notifications, locationAccess }) });
       if (!res.ok) throw new Error();
       Alert.alert(t('common.success'), t('profile.settingsSaved'));
@@ -366,7 +392,7 @@ function ChangePasswordView({ onSuccess }) {
     if (newPwd !== confirmPwd) return Alert.alert(t('common.error'), t('forgetPassword.errMatch'));
     setSaving(true);
     try {
-      const token = await AsyncStorage.getItem('accessToken');
+      const token = await getAccessToken();
       const res   = await fetch(`${API_URL}/users/me/password`, { method: 'PUT', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ currentPassword: currentPwd, newPassword: newPwd }) });
       const data  = await res.json();
       if (!res.ok) throw new Error(data.message || t('common.error'));
@@ -560,7 +586,7 @@ function MyAdsView({ ads, loading, onSelectAd, onRenew, onDelete, renewing, user
         const accentGlow = isLocal ? C.greenGlow : C.blueGlow;
         const { diff: hoursLeft, label: left } = getTimeLeft(item);
         const expired  = hoursLeft <= 0;
-        const firstImg = item.medias?.find(m => m.type === 'image');
+        const firstImg = item.medias?.find(isImageMedia);
         const locLine  = isLocal
           ? [item.localisation?.ville, item.localisation?.gouvernorat].filter(Boolean).join(', ')
           : [item.localisationDebut?.ville, '→', item.localisationFin?.ville].filter(Boolean).join(' ');
@@ -569,7 +595,7 @@ function MyAdsView({ ads, loading, onSelectAd, onRenew, onDelete, renewing, user
             {/* ── Cover image ── */}
             <View style={styles.adCardCover}>
               {firstImg
-                ? <Image source={{ uri: firstImg.url }} style={styles.adCardCoverImg} resizeMode="cover" />
+                ? <Image source={{ uri: getMediaUri(firstImg) }} style={styles.adCardCoverImg} resizeMode="cover" />
                 : <View style={[styles.adCardCoverPlaceholder, { backgroundColor: accentGlow }]}>
                     <FontAwesome6 name={isLocal ? 'location-dot' : 'handshake'} size={42} color={accent} />
                   </View>
@@ -641,7 +667,7 @@ function AdDetailView({ ad, onRenew, onDelete, renewing, user }) {
   const exp        = ad.expiresAt ? new Date(ad.expiresAt) : new Date(new Date(ad.createdAt).getTime() + 24 * 3600 * 1000);
   const hoursLeft  = Math.max(0, Math.round((exp - Date.now()) / 3600000));
   const expired    = hoursLeft <= 0;
-  const firstImg   = ad.medias?.find(m => m.type === 'image');
+  const firstImg   = ad.medias?.find(isImageMedia);
   const locLabel   = isLocal
     ? [ad.localisation?.ville, ad.localisation?.gouvernorat].filter(Boolean).join(', ')
     : [ad.localisationDebut?.ville, '→', ad.localisationFin?.ville].filter(Boolean).join(' ');
@@ -654,7 +680,7 @@ function AdDetailView({ ad, onRenew, onDelete, renewing, user }) {
       {/* ── Hero image ── */}
       <View style={styles.adDetailHero}>
         {firstImg
-          ? <Image source={{ uri: firstImg.url }} style={styles.adDetailImage} resizeMode="cover" />
+          ? <Image source={{ uri: getMediaUri(firstImg) }} style={styles.adDetailImage} resizeMode="cover" />
           : <View style={[styles.adDetailImagePlaceholder, { backgroundColor: accentGlow }]}>
               <FontAwesome6 name={isLocal ? 'location-dot' : 'handshake'} size={48} color={accent} />
             </View>}
@@ -832,7 +858,7 @@ function BuyPointsView({ user, onSuccess }) {
     if (!selected) return;
     setBuying(true);
     try {
-      const token = await AsyncStorage.getItem('accessToken');
+      const token = await getAccessToken();
       const res   = await fetch(`${API_URL}/users/me/points/buy`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
@@ -952,7 +978,7 @@ export default function ProfileScreen() {
   const fetchMyAds = async () => {
     setAdsLoading(true);
     try {
-      const token = await AsyncStorage.getItem('accessToken');
+      const token = await getAccessToken();
       const res   = await fetch(`${API_URL}/users/me/ads?_t=${Date.now()}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
       const data  = await res.json();
       const ads   = data.publications ?? data;
@@ -965,7 +991,7 @@ export default function ProfileScreen() {
     setLoading(true);
     const fetchUser = async () => {
       try {
-        const token = await AsyncStorage.getItem('accessToken');
+        const token = await getAccessToken();
         const res   = await fetch(`${API_URL}/users/me`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
         if (res.ok) {
           const data = await res.json();
@@ -991,7 +1017,7 @@ export default function ProfileScreen() {
     if (!target) return;
     setRenewing(true);
     try {
-      const token = await AsyncStorage.getItem('accessToken');
+      const token = await getAccessToken();
       const res   = await fetch(`${API_URL}/publications/${target._id}/renew`, {
         method: 'POST',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -1021,7 +1047,7 @@ export default function ProfileScreen() {
   const handleDeleteConfirmed = async () => {
     if (!selectedAd) return; setDeleting(true);
     try {
-      const token = await AsyncStorage.getItem('accessToken');
+      const token = await getAccessToken();
       const res = await fetch(`${API_URL}/publications/${selectedAd._id}`, { method: 'DELETE', headers: token ? { Authorization: `Bearer ${token}` } : {} });
       if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.message || `${t('common.error')} ${res.status}`); }
       setSelectedAd(null); setView('myads'); await fetchMyAds();

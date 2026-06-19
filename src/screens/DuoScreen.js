@@ -9,9 +9,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getCurrentUser } from '../utils/api';
+import { getAccessToken } from '../security/secureStorage';
 import { environment } from '../environments/environment';
+import { getActiveServerUrl } from '../utils/serverBalancer';
 import BottomTabBar from '../components/BottomTabBar';
 import { PubCardSkeleton } from '../components/SkeletonLoader';
 import EmptyState from '../components/EmptyState';
@@ -40,8 +41,29 @@ const LEVELS = [
   { key: 'international', label: 'International', icon: 'globe',       color: C.intl,  endColor: '#5B21B6', glow: C.intlGlow  },
 ];
 
-const fixMediaUrl = (url) =>
-  url ? url.replace(/^https?:\/\/[^/]+/, SERVER_BASE) : null;
+const fixMediaUrl = (url) => {
+  if (!url) return null;
+  const ipMatch = url.match(/^https?:\/\/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(:\d+)?(\/.*)?$/);
+  if (ipMatch) return `https://${ipMatch[1]}.nip.io${ipMatch[3] || '/'}`;
+  const base = getActiveServerUrl().replace('/api', '');
+  if (/^https?:\/\//.test(url)) return url.replace(/^https?:\/\/[^/]+/, base);
+  return base + (url.startsWith('/') ? url : '/' + url);
+};
+
+const getMediaUri = (m) => {
+  if (!m) return null;
+  const raw = (typeof m === 'string') ? m : (m.url || m.path || m.uri || m.src || m.filename || null);
+  return fixMediaUrl(raw);
+};
+
+const isImageMedia = (m) => {
+  if (!m) return false;
+  if (typeof m === 'string') return /\.(jpe?g|png|gif|webp|bmp|heic|avif)(\?.*)?$/i.test(m);
+  const t = (m.type || m.mimetype || m.mimeType || m.contentType || '').toLowerCase();
+  if (t === 'image' || t.startsWith('image/')) return true;
+  const url = m.url || m.path || m.uri || m.src || m.filename || '';
+  return /\.(jpe?g|png|gif|webp|bmp|heic|avif)(\?.*)?$/i.test(url);
+};
 
 const timeAgo = (d) => {
   if (!d) return '';
@@ -124,7 +146,7 @@ const PubCard = ({ item, level, onPress, onContact, currentUser }) => {
     ? `${deb.gouvernorat} → ${fin.gouvernorat}` : (deb?.gouvernorat || '');
   const authorName    = [item.auteur?.prenom, item.auteur?.nom].filter(Boolean).join(' ') || 'Anonyme';
   const authorInitial = authorName[0]?.toUpperCase() || '?';
-  const imageUri = fixMediaUrl(item.medias?.find(m => m.type === 'image')?.url);
+  const imageUri = getMediaUri(item.medias?.find(isImageMedia));
 
   const onPressIn  = () => Animated.spring(scaleAnim, { toValue: 0.97, useNativeDriver: true, tension: 200 }).start();
   const onPressOut = () => Animated.spring(scaleAnim, { toValue: 1,    useNativeDriver: true, tension: 200 }).start();
@@ -134,7 +156,7 @@ const PubCard = ({ item, level, onPress, onContact, currentUser }) => {
     if (!currentUser) { onContact(); return; }
     setLikeLoading(true);
     try {
-      const token = await AsyncStorage.getItem('accessToken');
+      const token = await getAccessToken();
       const res   = await fetch(`${API_URL}/publications/${item._id}/like`, {
         method: 'POST', headers: { Authorization: `Bearer ${token}` },
       });
@@ -282,7 +304,7 @@ export default function DuoScreen() {
         ...(zoneName.trim() && { ville: zoneName.trim() }),
         ...(search.trim()   && { search: search.trim() }),
       });
-      const token = await AsyncStorage.getItem('accessToken');
+      const token = await getAccessToken();
       const res   = await fetch(`${API_URL}/publications?${params}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });

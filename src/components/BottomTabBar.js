@@ -38,9 +38,7 @@ export default function BottomTabBar({ activeTab, navigation, isAuthenticated })
   const content = (
     <View style={[styles.row, { borderTopColor: colors.tabBarBorder }]}>
       {visibleTabs.map((tab) => {
-        const locked = tab.authRequired && !isAuthenticated;
-
-        return (
+          return (
           <TouchableOpacity
             key={tab.key}
             style={styles.tab}
@@ -49,8 +47,8 @@ export default function BottomTabBar({ activeTab, navigation, isAuthenticated })
           >
             <View style={styles.iconWrap}>
               <FontAwesome6
-                name={locked ? 'lock' : tab.icon}
-                size={locked ? 16 : tab.size}
+                name={tab.icon}
+                size={tab.size}
                 color={iconColor}
               />
             </View>

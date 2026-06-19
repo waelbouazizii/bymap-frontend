@@ -1,20 +1,13 @@
+// EXPO_PUBLIC_ variables are inlined at build time by Expo Metro.
+// Set EXPO_PUBLIC_API_URL in your Vercel project settings to point to the
+// active backend server. Falls back to S2 when not set.
+const _apiUrl =
+  process.env.EXPO_PUBLIC_API_URL ||
+  'https://107.22.30.30.nip.io/api';
+
 export const environment = {
-  production: false,
-
-  // ── Serveur 1 : (bymap-server-1) ──────────────────────
-  //apiUrl: 'https://13.217.50.109.nip.io/api',
-
-  // ── Serveur 2 : (bymap-server-2) ──────────────────────
-  apiUrl: 'https://107.22.30.30.nip.io/api',
-
-  // ── Serveur 3 : (bymap-server-3) ──────────────────────
-  //apiUrl: 'https://3.81.200.151.nip.io/api',
-
-  // ── Render (backup cloud) ────────────────────────────────────────────────
-  //apiUrl: 'https://backend-bymap.onrender.com/api',
-
-  // ── Local dev ────────────────────────────────────────────────────────────
-  //apiUrl: 'http://192.168.100.202:5000/api',
+  production: process.env.EXPO_PUBLIC_ENV === 'production',
+  apiUrl: _apiUrl,
 };
 
-export const API_URL = environment.apiUrl;
+export const API_URL = _apiUrl;

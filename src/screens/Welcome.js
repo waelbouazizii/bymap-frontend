@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getAccessToken } from '../security/secureStorage';
 import { environment } from '../environments/environment';
 
 const API_URL = environment.apiUrl;
@@ -52,7 +53,7 @@ export default function Welcome() {
         // ── Étape 1 : vérifier le token stocké ──────────────────────────────
         setStepLabel(STEPS[0].label);
         await animateTo(STEPS[0].target, 400);
-        const token = await AsyncStorage.getItem('accessToken');
+        const token = await getAccessToken();
 
         // ── Étape 2 : charger les zones (zone-dots) ─────────────────────────
         setStepLabel(STEPS[1].label);

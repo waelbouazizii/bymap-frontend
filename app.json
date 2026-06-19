@@ -48,6 +48,8 @@
       ]
     },
     "web": {
+      "bundler": "metro",
+      "output": "single",
       "favicon": "./assets/logo.png"
     },
     "plugins": [
@@ -66,8 +68,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "f4bfa777-8c91-437f-b037-c8db0ef5eb8d"
+        "projectId": "7ff2a363-252d-43bf-9723-a1b4b7e2c75f"
       }
-    }
+    },
+    "owner": "wael_bouazizi"
   }
 }

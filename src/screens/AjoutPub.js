@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import * as ImagePicker from 'expo-image-picker';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getAccessToken } from '../security/secureStorage';
 import TUNISIA from '../../assets/tunisia.json';
 import { environment } from '../environments/environment';
 
@@ -431,7 +431,7 @@ export default function AjoutePub() {
     if (!canSubmit) return;
     setLoading(true);
     try {
-      const token = await AsyncStorage.getItem('accessToken');
+      const token = await getAccessToken();
       if (!token) { Alert.alert('Session expirée', 'Veuillez vous reconnecter pour publier.', [{ text: 'Se connecter', onPress: () => navigation.replace('Login') }]); return; }
       const formData = new FormData();
       formData.append('mode', mode);

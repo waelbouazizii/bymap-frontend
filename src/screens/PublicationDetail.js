@@ -10,13 +10,14 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { VideoView, useVideoPlayer } from 'expo-video';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getAccessToken } from '../security/secureStorage';
 import { File, Paths } from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
 import { getCurrentUser } from '../utils/api';
 import { useTranslation } from 'react-i18next';
 import { environment } from '../environments/environment';
+import { getActiveServerUrl } from '../utils/serverBalancer';
 
 const API_URL    = environment.apiUrl;
 const SERVER_BASE = API_URL.replace('/api', '');
@@ -39,7 +40,26 @@ const C = {
 
 function fixMediaUrl(url) {
   if (!url) return null;
-  return url.replace(/^https?:\/\/[^/]+/, SERVER_BASE);
+  const ipMatch = url.match(/^https?:\/\/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(:\d+)?(\/.*)?$/);
+  if (ipMatch) return `https://${ipMatch[1]}.nip.io${ipMatch[3] || '/'}`;
+  const base = getActiveServerUrl().replace('/api', '');
+  if (/^https?:\/\//.test(url)) return url.replace(/^https?:\/\/[^/]+/, base);
+  return base + (url.startsWith('/') ? url : '/' + url);
+}
+
+function getMediaUri(m) {
+  if (!m) return null;
+  const raw = (typeof m === 'string') ? m : (m.url || m.path || m.uri || m.src || m.filename || null);
+  return fixMediaUrl(raw);
+}
+
+function isVideoMedia(m) {
+  if (!m) return false;
+  if (typeof m === 'string') return /\.(mp4|mov|avi|webm|mkv|m4v|3gp)(\?.*)?$/i.test(m);
+  const t = (m.type || m.mimetype || m.mimeType || m.contentType || '').toLowerCase();
+  if (t === 'video' || t.startsWith('video/')) return true;
+  const url = m.url || m.path || m.uri || m.src || m.filename || '';
+  return /\.(mp4|mov|avi|webm|mkv|m4v|3gp)(\?.*)?$/i.test(url);
 }
 
 // ── Video item ────────────────────────────────────────────────────────────────
@@ -102,8 +122,8 @@ function MediaCarousel({ medias }) {
           setPaused(true);
         }}
         renderItem={({ item, index: i }) => {
-          const uri = fixMediaUrl(item.url);
-          if (item.type === 'video') return (
+          const uri = getMediaUri(item);
+          if (isVideoMedia(item)) return (
             <VideoItem uri={uri} shouldPlay={i === index && !paused} onPress={() => setPaused(p => !p)} />
           );
           return (
@@ -190,7 +210,7 @@ export default function PublicationDetail() {
 
   const handleLike = async () => {
     try {
-      const token = await AsyncStorage.getItem('accessToken');
+      const token = await getAccessToken();
       if (!token) { Alert.alert(t('publicationDetail.loginRequired'), t('publicationDetail.loginToLike')); return; }
       const res = await fetch(`${API_URL}/publications/${pub._id}/like`, {
         method: 'POST', headers: { Authorization: `Bearer ${token}` },
@@ -201,7 +221,7 @@ export default function PublicationDetail() {
 
   const handleRate = async (value) => {
     try {
-      const token = await AsyncStorage.getItem('accessToken');
+      const token = await getAccessToken();
       if (!token) { Alert.alert(t('publicationDetail.loginRequired'), t('publicationDetail.loginToRate')); return; }
       const res = await fetch(`${API_URL}/publications/${pub._id}/rate`, {
         method: 'POST',

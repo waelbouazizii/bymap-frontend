@@ -8,7 +8,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getAccessToken } from '../security/secureStorage';
 import { API_URL } from '../environments/environment';
 import { useTranslation } from 'react-i18next';
 import EmptyState from '../components/EmptyState';
@@ -36,7 +36,7 @@ export default function ConversationsList() {
 
   const fetchConversations = useCallback(async () => {
     try {
-      const token = await AsyncStorage.getItem('accessToken');
+      const token = await getAccessToken();
       if (!token) return;
       const res = await fetch(`${API_URL}/messages/conversations`, {
         headers: { Authorization: `Bearer ${token}` },

@@ -12,6 +12,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getAccessToken } from '../../security/secureStorage';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { API_URL } from '../../environments/environment';
@@ -321,7 +322,7 @@ const AddZoneModal = ({ visible, onClose, navigation, initialCoords, onSaved }) 
     if (!lat || !lng)    { Alert.alert('Erreur', 'Coordonnées manquantes.');                                             return; }
     setSaving(true);
     try {
-      const token = await AsyncStorage.getItem('accessToken');
+      const token = await getAccessToken();
       const res = await fetch(`${API_URL}/admin/zones`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -674,7 +675,7 @@ function UsersListView({ onBack, onSelectUser }) {
 
   const fetchUsers = useCallback(async (p = 1, q = search, reset = false) => {
     try {
-      const token = await AsyncStorage.getItem('accessToken');
+      const token = await getAccessToken();
       const res   = await fetch(`${API_URL}/admin/users?page=${p}&limit=20&search=${encodeURIComponent(q)}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
       if (!res.ok) return;
       const data = await res.json();
@@ -688,7 +689,7 @@ function UsersListView({ onBack, onSelectUser }) {
 
   const toggleActive = async (user) => {
     try {
-      const token = await AsyncStorage.getItem('accessToken');
+      const token = await getAccessToken();
       const res   = await fetch(`${API_URL}/admin/users/${user._id}/toggle`, { method: 'PUT', headers: token ? { Authorization: `Bearer ${token}` } : {} });
       if (!res.ok) throw new Error();
       setUsers(prev => prev.map(u => u._id === user._id ? { ...u, isActive: !u.isActive } : u));
@@ -700,7 +701,7 @@ function UsersListView({ onBack, onSelectUser }) {
       { text: 'Annuler', style: 'cancel' },
       { text: 'Supprimer', style: 'destructive', onPress: async () => {
         try {
-          const token = await AsyncStorage.getItem('accessToken');
+          const token = await getAccessToken();
           const res   = await fetch(`${API_URL}/admin/users/${user._id}`, { method: 'DELETE', headers: token ? { Authorization: `Bearer ${token}` } : {} });
           if (!res.ok) throw new Error();
           setUsers(prev => prev.filter(u => u._id !== user._id));
@@ -727,7 +728,7 @@ function UsersListView({ onBack, onSelectUser }) {
     }
     setAdding(true);
     try {
-      const token = await AsyncStorage.getItem('accessToken');
+      const token = await getAccessToken();
       const res   = await fetch(`${API_URL}/admin/users/${modalUser._id}/add-points`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
@@ -938,7 +939,7 @@ function UserPostsView({ user, onBack }) {
   useEffect(() => {
     (async () => {
       try {
-        const token = await AsyncStorage.getItem('accessToken');
+        const token = await getAccessToken();
         const res = await fetch(`${API_URL}/publications?auteur=${user._id}&limit=50`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
         if (res.ok) { const data = await res.json(); setPosts(data.publications || data.pubs || data.data || []); }
       } catch { Alert.alert('Erreur', 'Impossible de charger les publications.'); }
@@ -1061,7 +1062,7 @@ function PublicationsView() {
   useEffect(() => {
     (async () => {
       try {
-        const token = await AsyncStorage.getItem('accessToken');
+        const token = await getAccessToken();
         const res = await fetch(`${API_URL}/publications?limit=80`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
         if (res.ok) { const d = await res.json(); setPosts(d.publications || d.pubs || d.data || []); }
       } catch {}
@@ -1074,7 +1075,7 @@ function PublicationsView() {
       { text: 'Annuler', style: 'cancel' },
       { text: 'Supprimer', style: 'destructive', onPress: async () => {
         try {
-          const token = await AsyncStorage.getItem('accessToken');
+          const token = await getAccessToken();
           const res = await fetch(`${API_URL}/publications/${p._id}`, {
             method: 'DELETE',
             headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -1233,7 +1234,7 @@ export default function AdminDashboard() {
 
   const fetchStats = useCallback(async () => {
     try {
-      const token = await AsyncStorage.getItem('accessToken');
+      const token = await getAccessToken();
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const [statsRes] = await Promise.all([fetch(`${API_URL}/admin/stats`, { headers })]);
       if (statsRes.ok) setStats(await statsRes.json());
@@ -1246,7 +1247,7 @@ export default function AdminDashboard() {
   const fetchZones = useCallback(async () => {
     setZonesLoading(true);
     try {
-      const token = await AsyncStorage.getItem('accessToken');
+      const token = await getAccessToken();
       const res   = await fetch(`${API_URL}/admin/zones`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
       if (res.ok) { const data = await res.json(); setZones(data.zones || []); }
     } catch { Alert.alert('Erreur', 'Impossible de charger les zones.'); }
@@ -1260,7 +1261,7 @@ export default function AdminDashboard() {
       { text: 'Annuler', style: 'cancel' },
       { text: 'Supprimer', style: 'destructive', onPress: async () => {
         try {
-          const token = await AsyncStorage.getItem('accessToken');
+          const token = await getAccessToken();
           const res   = await fetch(`${API_URL}/admin/zones/${zone._id}`, { method: 'DELETE', headers: token ? { Authorization: `Bearer ${token}` } : {} });
           if (!res.ok) throw new Error();
           setZones(prev => prev.filter(z => z._id !== zone._id));
@@ -1285,7 +1286,7 @@ export default function AdminDashboard() {
       { text: 'Importer', onPress: async () => {
         setImportingTunisia(true);
         try {
-          const token = await AsyncStorage.getItem('accessToken');
+          const token = await getAccessToken();
           const res = await fetch(`${API_URL}/admin/localites/import`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
           const data = await res.json();
           if (!res.ok) throw new Error(data.message || 'Erreur serveur');
@@ -1303,7 +1304,7 @@ export default function AdminDashboard() {
   };
 
   const handleImportZones = async (parsedZones) => {
-    const token = await AsyncStorage.getItem('accessToken');
+    const token = await getAccessToken();
     const res = await fetch(`${API_URL}/admin/zones/bulk`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
