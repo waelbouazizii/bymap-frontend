@@ -4,7 +4,7 @@ import { FontAwesome6 } from '@expo/vector-icons';
 import {
   StyleSheet, View, Text, TextInput, TouchableOpacity,
   ScrollView, FlatList, Switch, Alert, Modal,
-  ActivityIndicator, Image,
+  ActivityIndicator, Image, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -30,7 +30,17 @@ const SERVER_BASE = API_URL.replace('/api', '');
 const fixMediaUrl = (url) => {
   if (!url) return null;
   const ipMatch = url.match(/^https?:\/\/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(:\d+)?(\/.*)?$/);
-  if (ipMatch) return `https://${ipMatch[1]}.nip.io${ipMatch[3] || '/'}`;
+  if (ipMatch) {
+    if (Platform.OS === 'web') {
+      const uploadPath = ipMatch[3] || '/';
+      if (window.location.protocol === 'https:') {
+        const filename = uploadPath.replace(/^\/+uploads\/+/, '');
+        return `/api/media?path=${encodeURIComponent(filename)}`;
+      }
+      return `http://${ipMatch[1]}:5000${uploadPath}`;
+    }
+    return `https://${ipMatch[1]}.nip.io${ipMatch[3] || '/'}`;
+  }
   const base = getActiveServerUrl().replace('/api', '');
   if (/^https?:\/\//.test(url)) return url.replace(/^https?:\/\/[^/]+/, base);
   return base + (url.startsWith('/') ? url : '/' + url);

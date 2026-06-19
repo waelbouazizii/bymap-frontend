@@ -17,6 +17,7 @@ import {
   RefreshControl,
   Modal,
   Alert,
+  Platform,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -79,7 +80,19 @@ const fixMediaUrl = (url) => {
   //  - HTTPS avoids Android cleartext-traffic block
   //  - Points directly to the server that actually holds the file
   const ipMatch = url.match(/^https?:\/\/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(:\d+)?(\/.*)?$/);
-  if (ipMatch) return `https://${ipMatch[1]}.nip.io${ipMatch[3] || '/'}`;
+  if (ipMatch) {
+    if (Platform.OS === 'web') {
+      const uploadPath = ipMatch[3] || '/';
+      // On HTTPS (Vercel): route through /api/media proxy (same-origin, server fetches HTTP)
+      // On HTTP (localhost dev): use original URL directly — no mixed-content issue on HTTP pages
+      if (window.location.protocol === 'https:') {
+        const filename = uploadPath.replace(/^\/+uploads\/+/, '');
+        return `/api/media?path=${encodeURIComponent(filename)}`;
+      }
+      return `http://${ipMatch[1]}:5000${uploadPath}`;
+    }
+    return `https://${ipMatch[1]}.nip.io${ipMatch[3] || '/'}`;
+  }
   // Domain-based absolute URL — normalise host to the currently-active proxy server
   const base = getActiveServerUrl().replace('/api', '');
   if (/^https?:\/\//.test(url)) return url.replace(/^https?:\/\/[^/]+/, base);
