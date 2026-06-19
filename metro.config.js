@@ -13,6 +13,7 @@ config.resolver.unstable_enablePackageExports = false;
 // Each shim exports the same API shape with no-op / browser-fallback implementations.
 const WEB_SHIMS = {
   'react-native-view-shot': path.resolve(__dirname, 'src/web-shims/view-shot.js'),
+  'expo-secure-store':      path.resolve(__dirname, 'src/web-shims/secure-store.js'),
 };
 
 const { resolveRequest: originalResolveRequest } = config.resolver;
