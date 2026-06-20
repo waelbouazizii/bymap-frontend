@@ -156,23 +156,26 @@ export default function Messages() {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
         >
-          {loading ? (
-            <View style={styles.centered}>
-              <ActivityIndicator size="large" color="#2DBD7E" />
-            </View>
-          ) : (
-            <FlatList
-              ref={flatRef}
-              data={messages}
-              keyExtractor={item => item._id}
-              renderItem={renderItem}
-              contentContainerStyle={styles.listContent}
-              showsVerticalScrollIndicator={false}
-              ListEmptyComponent={
-                <EmptyState icon="comments" title="Aucun message" subtitle={`Démarrez la conversation avec ${recipientName}`} />
-              }
-            />
-          )}
+          <View style={{ flex: 1 }}>
+            {loading ? (
+              <View style={styles.centered}>
+                <ActivityIndicator size="large" color="#2DBD7E" />
+              </View>
+            ) : (
+              <FlatList
+                style={StyleSheet.absoluteFillObject}
+                ref={flatRef}
+                data={messages}
+                keyExtractor={item => item._id}
+                renderItem={renderItem}
+                contentContainerStyle={styles.listContent}
+                showsVerticalScrollIndicator={false}
+                ListEmptyComponent={
+                  <EmptyState icon="comments" title="Aucun message" subtitle={`Démarrez la conversation avec ${recipientName}`} />
+                }
+              />
+            )}
+          </View>
 
           {/* ── Input bar ── */}
           <View style={styles.inputBar}>

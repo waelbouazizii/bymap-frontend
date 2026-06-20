@@ -453,6 +453,7 @@ export default function LoginScreen() {
 
           <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
             <ScrollView
+              style={Platform.OS === 'web' ? StyleSheet.absoluteFillObject : { flex: 1 }}
               contentContainerStyle={s.scroll}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
@@ -855,6 +856,7 @@ export default function LoginScreen() {
 
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <ScrollView
+            style={Platform.OS === 'web' ? StyleSheet.absoluteFillObject : { flex: 1 }}
             contentContainerStyle={s.scroll}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}

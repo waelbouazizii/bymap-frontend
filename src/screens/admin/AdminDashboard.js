@@ -810,7 +810,7 @@ function ZonesView({ onBack, onAdd, onImport, onExport, zones, loading, onDelete
           <Text style={styles.emptyTitle}>Aucune zone ajoutée</Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.listPad} showsVerticalScrollIndicator={false}>
+        <ScrollView style={Platform.OS === 'web' ? StyleSheet.absoluteFillObject : { flex: 1 }} contentContainerStyle={styles.listPad} showsVerticalScrollIndicator={false}>
           {zones.map(z => (
             <View key={z._id} style={styles.zoneCard}>
               <View style={[styles.zoneIconBox, { backgroundColor: C.greenGlow }]}>
@@ -1030,7 +1030,7 @@ function UsersListView({ onBack, onSelectUser }) {
         <View style={styles.loaderBox}><ActivityIndicator size="large" color={C.green} /></View>
       ) : (
         <ScrollView
-          style={{ flex: 1 }}
+          style={Platform.OS === 'web' ? StyleSheet.absoluteFillObject : { flex: 1 }}
           contentContainerStyle={styles.listPad}
           showsVerticalScrollIndicator={false}
           onScroll={({ nativeEvent: e }) => {
@@ -1153,7 +1153,7 @@ function UserPostsView({ user, onBack }) {
           <Text style={styles.emptyTitle}>Aucune publication</Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.listPad} showsVerticalScrollIndicator={false}>
+        <ScrollView style={Platform.OS === 'web' ? StyleSheet.absoluteFillObject : { flex: 1 }} contentContainerStyle={styles.listPad} showsVerticalScrollIndicator={false}>
           {posts.map((p) => {
             const isLocal = p.mode === 'local';
             const accent  = isLocal ? C.green : C.blue;
@@ -1297,7 +1297,7 @@ function PublicationsView() {
           <Text style={styles.emptyTitle}>Aucune publication</Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.listPad} showsVerticalScrollIndicator={false}>
+        <ScrollView style={Platform.OS === 'web' ? StyleSheet.absoluteFillObject : { flex: 1 }} contentContainerStyle={styles.listPad} showsVerticalScrollIndicator={false}>
           {filtered.map((p) => {
             const isLocal = p.mode === 'local';
             const accent  = isLocal ? C.green : C.blue;
@@ -1343,7 +1343,7 @@ function ParametresView({ stats, statsLoading, onImportTunisia, importingTunisia
         <FontAwesome6 name="gear" size={18} color={C.textDim} />
         <Text style={styles.subHeaderTitle}>Paramètres</Text>
       </View>
-      <ScrollView contentContainerStyle={[styles.listPad, { paddingTop: 16 }]} showsVerticalScrollIndicator={false}>
+      <ScrollView style={Platform.OS === 'web' ? StyleSheet.absoluteFillObject : { flex: 1 }} contentContainerStyle={[styles.listPad, { paddingTop: 16 }]} showsVerticalScrollIndicator={false}>
         <LinearGradient colors={[C.green, C.greenDark]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.welcomeCard}>
           <View style={styles.welcomeLeft}>
             <Text style={styles.welcomeTitle}>Vue d'ensemble</Text>

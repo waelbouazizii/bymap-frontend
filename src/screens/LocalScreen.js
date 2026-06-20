@@ -26,7 +26,6 @@ import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getCurrentUser, logout as apiLogout, checkFavorite, toggleFavorite } from '../utils/api';
 import { getAccessToken } from '../security/secureStorage';
-import { getActiveServerUrl } from '../utils/serverBalancer';
 import TUNISIA from '../../assets/tunisia.json';
 import { useTranslation } from 'react-i18next';
 import BottomTabBar from '../components/BottomTabBar';
@@ -74,29 +73,20 @@ async function resolveZoneParent(name) {
 
 const fixMediaUrl = (url) => {
   if (!url) return null;
-  // Backend stores raw http://IP:PORT/uploads/... URLs (its own internal address).
-  // Convert http://IP:PORT/path → https://IP.nip.io/path so React Native can load it:
-  //  - nip.io DNS resolves IP.nip.io to IP (free, wildcard DNS service)
-  //  - HTTPS avoids Android cleartext-traffic block
-  //  - Points directly to the server that actually holds the file
-  const ipMatch = url.match(/^https?:\/\/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(:\d+)?(\/.*)?$/);
-  if (ipMatch) {
-    if (Platform.OS === 'web') {
-      const uploadPath = ipMatch[3] || '/';
-      // On HTTPS (Vercel): route through /api/media proxy (same-origin, server fetches HTTP)
-      // On HTTP (localhost dev): use original URL directly — no mixed-content issue on HTTP pages
-      if (window.location.protocol === 'https:') {
-        const filename = uploadPath.replace(/^\/+uploads\/+/, '');
-        return `/api/media?path=${encodeURIComponent(filename)}`;
-      }
-      return `http://${ipMatch[1]}:5000${uploadPath}`;
-    }
-    return `https://${ipMatch[1]}.nip.io${ipMatch[3] || '/'}`;
+  let filename = null;
+  if (/^https?:\/\//.test(url)) {
+    const m = url.match(/\/uploads\/(.+)$/);
+    if (!m) return url.replace(/^https?:\/\/[^/]+/, SERVER_BASE);
+    filename = m[1];
+  } else if (url.startsWith('/api/media?path=')) {
+    filename = url.slice('/api/media?path='.length);
+  } else if (url.startsWith('/uploads/')) {
+    filename = url.slice('/uploads/'.length);
+  } else {
+    return url;
   }
-  // Domain-based absolute URL — normalise host to the currently-active proxy server
-  const base = getActiveServerUrl().replace('/api', '');
-  if (/^https?:\/\//.test(url)) return url.replace(/^https?:\/\/[^/]+/, base);
-  return base + (url.startsWith('/') ? url : '/' + url);
+  if (Platform.OS === 'web' && window.location.protocol === 'https:') return `/api/media?path=${filename}`;
+  return `${SERVER_BASE}/uploads/${filename}`;
 };
 
 // Extract display URL from a media item — handles strings and objects with various backend field names

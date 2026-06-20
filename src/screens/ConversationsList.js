@@ -119,27 +119,30 @@ export default function ConversationsList() {
           <View style={{ width: 40 }} />
         </LinearGradient>
 
-        {loading ? (
-          <View style={styles.centered}>
-            <ActivityIndicator size="large" color="#2DBD7E" />
-          </View>
-        ) : (
-          <FlatList
-            data={convs}
-            keyExtractor={(item, i) => item.contact?._id || String(i)}
-            renderItem={renderItem}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
-            ListEmptyComponent={
-              <EmptyState
-                icon="comments"
-                title={t('conversations.noConversations')}
-                subtitle={t('conversations.noConversationsSub')}
-              />
-            }
-          />
-        )}
+        <View style={{ flex: 1 }}>
+          {loading ? (
+            <View style={styles.centered}>
+              <ActivityIndicator size="large" color="#2DBD7E" />
+            </View>
+          ) : (
+            <FlatList
+              style={StyleSheet.absoluteFillObject}
+              data={convs}
+              keyExtractor={(item, i) => item.contact?._id || String(i)}
+              renderItem={renderItem}
+              contentContainerStyle={styles.listContent}
+              showsVerticalScrollIndicator={false}
+              ItemSeparatorComponent={() => <View style={styles.separator} />}
+              ListEmptyComponent={
+                <EmptyState
+                  icon="comments"
+                  title={t('conversations.noConversations')}
+                  subtitle={t('conversations.noConversationsSub')}
+                />
+              }
+            />
+          )}
+        </View>
         <BottomTabBar activeTab="messages" navigation={navigation} isAuthenticated={true} />
       </SafeAreaView>
     </View>

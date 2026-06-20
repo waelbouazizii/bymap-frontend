@@ -203,7 +203,7 @@ export default function ForgetPassword() {
         </View>
 
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-          <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+          <ScrollView style={Platform.OS === 'web' ? StyleSheet.absoluteFillObject : { flex: 1 }} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
             <Animated.View style={[styles.card, { opacity: fadeAnim }]}>
 
               {/* Icône */}

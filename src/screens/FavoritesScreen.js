@@ -220,12 +220,14 @@ export default function FavoritesScreen() {
       </View>
 
       {/* ── Contenu ── */}
+      <View style={{ flex: 1 }}>
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={C.green} />
         </View>
       ) : (
         <FlatList
+          style={StyleSheet.absoluteFillObject}
           data={favorites}
           keyExtractor={item => item._id}
           contentContainerStyle={favorites.length === 0 ? styles.emptyContainer : styles.listContent}
@@ -250,6 +252,7 @@ export default function FavoritesScreen() {
           }
         />
       )}
+      </View>
 
       {/* ── Bottom Tab Bar ── */}
       <BottomTabBar activeTab="profile" navigation={navigation} isAuthenticated={!!currentUser} />

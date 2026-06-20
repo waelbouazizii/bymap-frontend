@@ -12,7 +12,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { getCurrentUser } from '../utils/api';
 import { getAccessToken } from '../security/secureStorage';
 import { environment } from '../environments/environment';
-import { getActiveServerUrl } from '../utils/serverBalancer';
 import BottomTabBar from '../components/BottomTabBar';
 import { PubCardSkeleton } from '../components/SkeletonLoader';
 import EmptyState from '../components/EmptyState';
@@ -43,21 +42,20 @@ const LEVELS = [
 
 const fixMediaUrl = (url) => {
   if (!url) return null;
-  const ipMatch = url.match(/^https?:\/\/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(:\d+)?(\/.*)?$/);
-  if (ipMatch) {
-    if (Platform.OS === 'web') {
-      const uploadPath = ipMatch[3] || '/';
-      if (window.location.protocol === 'https:') {
-        const filename = uploadPath.replace(/^\/+uploads\/+/, '');
-        return `/api/media?path=${encodeURIComponent(filename)}`;
-      }
-      return `http://${ipMatch[1]}:5000${uploadPath}`;
-    }
-    return `https://${ipMatch[1]}.nip.io${ipMatch[3] || '/'}`;
+  let filename = null;
+  if (/^https?:\/\//.test(url)) {
+    const m = url.match(/\/uploads\/(.+)$/);
+    if (!m) return url.replace(/^https?:\/\/[^/]+/, SERVER_BASE);
+    filename = m[1];
+  } else if (url.startsWith('/api/media?path=')) {
+    filename = url.slice('/api/media?path='.length);
+  } else if (url.startsWith('/uploads/')) {
+    filename = url.slice('/uploads/'.length);
+  } else {
+    return url;
   }
-  const base = getActiveServerUrl().replace('/api', '');
-  if (/^https?:\/\//.test(url)) return url.replace(/^https?:\/\/[^/]+/, base);
-  return base + (url.startsWith('/') ? url : '/' + url);
+  if (Platform.OS === 'web' && window.location.protocol === 'https:') return `/api/media?path=${filename}`;
+  return `${SERVER_BASE}/uploads/${filename}`;
 };
 
 const getMediaUri = (m) => {

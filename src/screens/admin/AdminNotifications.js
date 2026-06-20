@@ -164,30 +164,33 @@ export default function AdminNotifications() {
           </View>
         </View>
 
-        {loading ? (
-          <View style={styles.loader}>
-            <ActivityIndicator size="large" color={C.green} />
-            <Text style={styles.loaderText}>Chargement…</Text>
-          </View>
-        ) : (
-          <FlatList
-            data={notifications}
-            keyExtractor={item => item._id}
-            contentContainerStyle={styles.listPad}
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.green} />
-            }
-            ListEmptyComponent={
-              <View style={styles.empty}>
-                <FontAwesome6 name="bell-slash" size={52} color="#D1D5DB" />
-                <Text style={styles.emptyTitle}>Aucune notification</Text>
-              </View>
-            }
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
-            renderItem={renderItem}
-          />
-        )}
+        <View style={{ flex: 1 }}>
+          {loading ? (
+            <View style={styles.loader}>
+              <ActivityIndicator size="large" color={C.green} />
+              <Text style={styles.loaderText}>Chargement…</Text>
+            </View>
+          ) : (
+            <FlatList
+              style={StyleSheet.absoluteFillObject}
+              data={notifications}
+              keyExtractor={item => item._id}
+              contentContainerStyle={styles.listPad}
+              showsVerticalScrollIndicator={false}
+              refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.green} />
+              }
+              ListEmptyComponent={
+                <View style={styles.empty}>
+                  <FontAwesome6 name="bell-slash" size={52} color="#D1D5DB" />
+                  <Text style={styles.emptyTitle}>Aucune notification</Text>
+                </View>
+              }
+              ItemSeparatorComponent={() => <View style={styles.separator} />}
+              renderItem={renderItem}
+            />
+          )}
+        </View>
       </SafeAreaView>
     </View>
   );

@@ -17,7 +17,6 @@ import ViewShot from 'react-native-view-shot';
 import QRCode from 'react-native-qrcode-svg';
 import { getCurrentUser, logout as apiLogout } from '../utils/api';
 import { environment } from '../environments/environment';
-import { getActiveServerUrl } from '../utils/serverBalancer';
 import { useTranslation } from 'react-i18next';
 import { changeAppLanguage, LANGUAGE_MAP, LANGUAGE_NAMES } from '../i18n/index';
 import BottomTabBar from '../components/BottomTabBar';
@@ -29,21 +28,20 @@ const SERVER_BASE = API_URL.replace('/api', '');
 
 const fixMediaUrl = (url) => {
   if (!url) return null;
-  const ipMatch = url.match(/^https?:\/\/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(:\d+)?(\/.*)?$/);
-  if (ipMatch) {
-    if (Platform.OS === 'web') {
-      const uploadPath = ipMatch[3] || '/';
-      if (window.location.protocol === 'https:') {
-        const filename = uploadPath.replace(/^\/+uploads\/+/, '');
-        return `/api/media?path=${encodeURIComponent(filename)}`;
-      }
-      return `http://${ipMatch[1]}:5000${uploadPath}`;
-    }
-    return `https://${ipMatch[1]}.nip.io${ipMatch[3] || '/'}`;
+  let filename = null;
+  if (/^https?:\/\//.test(url)) {
+    const m = url.match(/\/uploads\/(.+)$/);
+    if (!m) return url.replace(/^https?:\/\/[^/]+/, SERVER_BASE);
+    filename = m[1];
+  } else if (url.startsWith('/api/media?path=')) {
+    filename = url.slice('/api/media?path='.length);
+  } else if (url.startsWith('/uploads/')) {
+    filename = url.slice('/uploads/'.length);
+  } else {
+    return url;
   }
-  const base = getActiveServerUrl().replace('/api', '');
-  if (/^https?:\/\//.test(url)) return url.replace(/^https?:\/\/[^/]+/, base);
-  return base + (url.startsWith('/') ? url : '/' + url);
+  if (Platform.OS === 'web' && window.location.protocol === 'https:') return `/api/media?path=${filename}`;
+  return `${SERVER_BASE}/uploads/${filename}`;
 };
 
 const getMediaUri = (m) => {
@@ -85,13 +83,13 @@ function ProfileMain({ user, localCount, duoCount, onEditProfile, onSettings, on
   const freePosts  = typeof user?.freePostsRemaining === 'number' ? user.freePostsRemaining : 0;
   const userName = user ? `${user.prenom || ''} ${user.nom || ''}`.trim() || t('profile.unknown') : t('profile.unknown');
   return (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+    <ScrollView style={Platform.OS === 'web' ? StyleSheet.absoluteFillObject : { flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
 
       {/* ── Hero block ── */}
       <LinearGradient colors={['#0f2848', '#1a3a5c']} style={styles.profileHero}>
         <View style={styles.avatarCircle}>
           {user?.avatar
-            ? <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
+            ? <Image source={{ uri: fixMediaUrl(user.avatar) }} style={styles.avatarImage} />
             : <FontAwesome6 name="circle-user" size={52} color="rgba(255,255,255,0.8)" />}
         </View>
         <Text style={styles.profileName}>{userName}</Text>
@@ -226,7 +224,7 @@ function EditProfileView({ user, onSave }) {
       const res = await fetch(`${API_URL}/users/me/avatar`, { method: 'PUT', headers: { 'Content-Type': 'multipart/form-data', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: formData });
       if (!res.ok) throw new Error(t('profile.uploadFailed'));
       const data = await res.json();
-      setAvatarUri(data.avatar || asset.uri);
+      setAvatarUri(fixMediaUrl(data.avatarUrl) || asset.uri);
     } catch (err) { Alert.alert(t('common.error'), err.message || t('profile.changePhotoFailed')); }
     finally { setUploading(false); }
   };
@@ -245,7 +243,7 @@ function EditProfileView({ user, onSave }) {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.pageContent} keyboardShouldPersistTaps="handled">
+    <ScrollView style={Platform.OS === 'web' ? StyleSheet.absoluteFillObject : { flex: 1 }} contentContainerStyle={styles.pageContent} keyboardShouldPersistTaps="handled">
       <View style={styles.avatarCircle}>
         {avatarUri
           ? <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
@@ -321,7 +319,7 @@ function SettingsView({ onChangePassword }) {
   if (loadingSettings) return <ActivityIndicator style={{ flex: 1 }} color={C.green} />;
 
   return (
-    <ScrollView contentContainerStyle={styles.pageContent} showsVerticalScrollIndicator={false}>
+    <ScrollView style={Platform.OS === 'web' ? StyleSheet.absoluteFillObject : { flex: 1 }} contentContainerStyle={styles.pageContent} showsVerticalScrollIndicator={false}>
       {showLangPicker && (
         <View style={styles.langModal}>
           <View style={styles.langModalPanel}>
@@ -422,7 +420,7 @@ function ChangePasswordView({ onSuccess }) {
   );
 
   return (
-    <ScrollView contentContainerStyle={styles.pageContent} keyboardShouldPersistTaps="handled">
+    <ScrollView style={Platform.OS === 'web' ? StyleSheet.absoluteFillObject : { flex: 1 }} contentContainerStyle={styles.pageContent} keyboardShouldPersistTaps="handled">
       <View style={styles.pwdIconWrap}>
         <View style={styles.pwdIconCircle}>
           <FontAwesome6 name="lock" size={32} color={C.green} />
@@ -685,7 +683,7 @@ function AdDetailView({ ad, onRenew, onDelete, renewing, user }) {
   const points     = user?.pointsSolde ?? 0;
 
   return (
-    <ScrollView contentContainerStyle={styles.adDetailContent} showsVerticalScrollIndicator={false}>
+    <ScrollView style={Platform.OS === 'web' ? StyleSheet.absoluteFillObject : { flex: 1 }} contentContainerStyle={styles.adDetailContent} showsVerticalScrollIndicator={false}>
 
       {/* ── Hero image ── */}
       <View style={styles.adDetailHero}>
@@ -889,7 +887,7 @@ function BuyPointsView({ user, onSuccess }) {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.pageContent} showsVerticalScrollIndicator={false}>
+    <ScrollView style={Platform.OS === 'web' ? StyleSheet.absoluteFillObject : { flex: 1 }} contentContainerStyle={styles.pageContent} showsVerticalScrollIndicator={false}>
       <View style={styles.pointsIconCircle}>
         <FontAwesome6 name="coins" size={36} color="#F59E0B" />
       </View>
