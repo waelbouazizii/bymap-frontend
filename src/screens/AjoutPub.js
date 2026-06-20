@@ -413,7 +413,8 @@ export default function AjoutePub() {
   const [mode,    setMode]    = useState(initialMode);
   const [desc,    setDesc]    = useState('');
   const [media,   setMedia]   = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading,    setLoading]    = useState(false);
+  const [successMsg, setSuccessMsg] = useState(null);
   const [loc,      setLoc]      = useState(initialLoc);
   const [locDebut, setLocDebut] = useState(initialLoc);
   const [locFin,   setLocFin]   = useState(emptyLoc());
@@ -462,21 +463,11 @@ export default function AjoutePub() {
       if (!response.ok) { Alert.alert('Erreur', data.message || 'Impossible de publier'); return; }
 
       // ── Alertes post-publication ──────────────────────────────────────────────
-      if (data.warning?.type === 'LAST_FREE_POST') {
-        Alert.alert(
-          'Dernier post gratuit',
-          'Il vous reste 1 post gratuit. Après celui-ci, chaque publication consommera 10 points de votre solde.',
-          [{ text: 'OK', onPress: () => navigation.goBack() }]
-        );
-      } else if (data.warning?.type === 'LOW_POINTS') {
-        Alert.alert(
-          'Solde de points faible',
-          `Il vous reste seulement ${data.warning.pointsSolde} point${data.warning.pointsSolde > 1 ? 's' : ''}. Rechargez votre solde pour continuer à publier.`,
-          [{ text: 'OK', onPress: () => navigation.goBack() }]
-        );
-      } else {
-        Alert.alert('Publication créée !', 'Votre annonce a bien été enregistrée.', [{ text: 'OK', onPress: () => navigation.goBack() }]);
-      }
+      let msg = 'Votre annonce a bien été enregistrée.';
+      if (data.warning?.type === 'LAST_FREE_POST') msg = 'Publié ! Plus qu\'un post gratuit restant.';
+      else if (data.warning?.type === 'LOW_POINTS') msg = `Publié ! Solde faible : ${data.warning.pointsSolde} pts restants.`;
+      setSuccessMsg(msg);
+      setTimeout(() => navigation.goBack(), 2500);
     } catch { Alert.alert('Erreur réseau', 'Vérifiez votre connexion et réessayez.'); }
     finally { setLoading(false); }
   };
@@ -578,6 +569,14 @@ export default function AjoutePub() {
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
+
+      {/* ── Success toast ── */}
+      {successMsg && (
+        <View style={[styles.successToast, { backgroundColor: accent }]}>
+          <FontAwesome6 name="circle-check" size={20} color="#FFFFFF" />
+          <Text style={styles.successToastText}>{successMsg}</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -761,4 +760,15 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 12, elevation: 6,
   },
   submitBtnText: { ...T.titleMd, color: '#FFFFFF', letterSpacing: 1 },
+
+  // ── Success toast
+  successToast: {
+    position: 'absolute', bottom: 48, left: SP.xl, right: SP.xl,
+    flexDirection: 'row', alignItems: 'center', gap: SP.md,
+    paddingVertical: SP.base, paddingHorizontal: SP.lg,
+    borderRadius: R.xl,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.20, shadowRadius: 16, elevation: 12,
+  },
+  successToastText: { flex: 1, ...T.titleMd, color: '#FFFFFF' },
 });

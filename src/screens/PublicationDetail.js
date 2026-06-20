@@ -282,6 +282,7 @@ export default function PublicationDetail() {
           <View style={{ width: 38 }} />
         </View>
 
+        <View style={{ flex: 1 }}>
         <ScrollView showsVerticalScrollIndicator={false} style={Platform.OS === 'web' ? StyleSheet.absoluteFillObject : { flex: 1 }}>
           {/* ── Carousel ── */}
           <MediaCarousel medias={pub.medias} />
@@ -430,6 +431,7 @@ export default function PublicationDetail() {
             <View style={{ height: 16 }} />
           </View>
         </ScrollView>
+        </View>
 
         {/* ── Footer ── */}
         <View style={styles.footer}>
