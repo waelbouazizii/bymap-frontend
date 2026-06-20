@@ -188,6 +188,8 @@ function ProfileMain({ user, localCount, duoCount, onEditProfile, onSettings, on
 
 // ── VIEW 901 — Edit Profile ────────────────────────────────────────────────────
 function EditProfileView({ user, onSave }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { t } = useTranslation();
   const [fullName,      setFullName]      = useState(`${user?.prenom || ''} ${user?.nom || ''}`.trim());
   const [phone,         setPhone]         = useState(user?.phone || '');
@@ -274,6 +276,8 @@ const LANGUAGES = ['العربية', 'Français', 'English'];
 
 // ── VIEW 902 — Settings ────────────────────────────────────────────────────────
 function SettingsView({ onChangePassword }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { t, i18n } = useTranslation();
   const [language,        setLanguage]        = useState(LANGUAGE_NAMES[i18n.language] || 'Français');
   const [notifications,   setNotifications]   = useState(true);
@@ -385,6 +389,8 @@ function SettingsView({ onChangePassword }) {
 
 // ── VIEW 902b — Change Password ────────────────────────────────────────────────
 function ChangePasswordView({ onSuccess }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { t } = useTranslation();
   const [currentPwd,  setCurrentPwd]  = useState('');
   const [newPwd,      setNewPwd]      = useState('');
@@ -465,6 +471,8 @@ function ProfileUpdatedView({ user, onBackToProfile }) {
 
 // ── VIEW 601 — My Ads ──────────────────────────────────────────────────────────
 function MyAdsView({ ads, loading, onSelectAd, onRenew, onDelete, renewing, user }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { t } = useTranslation();
   const [qrItem, setQrItem] = useState(null);
   const qrViewRef = useRef(null);
@@ -668,6 +676,8 @@ function MyAdsView({ ads, loading, onSelectAd, onRenew, onDelete, renewing, user
 
 // ── VIEW 602 — Ad Detail ───────────────────────────────────────────────────────
 function AdDetailView({ ad, onRenew, onDelete, renewing, user }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { t } = useTranslation();
   const isLocal    = ad.mode === 'local';
   const accent     = isLocal ? C.green : C.blue;
@@ -791,6 +801,8 @@ function AdDetailView({ ad, onRenew, onDelete, renewing, user }) {
 
 // ── VIEW 603 — Renewed ─────────────────────────────────────────────────────────
 function RenewedView({ onBackToAds, renewResult }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { t } = useTranslation();
   const usedFree  = renewResult?.usedFreePost ?? false;
   const freePosts = renewResult?.freePostsRemaining ?? 0;
@@ -829,6 +841,8 @@ function RenewedView({ onBackToAds, renewResult }) {
 
 // ── VIEW 604 — Delete Confirm ──────────────────────────────────────────────────
 function DeleteAdView({ onCancel, onConfirmDelete, deleting }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { t } = useTranslation();
   return (
     <View style={styles.updatedCenter}>
@@ -858,6 +872,8 @@ const BUY_PACKAGES = [
 ];
 
 function BuyPointsView({ user, onSuccess }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [selected, setSelected] = useState(null);
   const [buying,   setBuying]   = useState(false);
   const solde = typeof user?.pointsSolde === 'number' ? user.pointsSolde : 100;
