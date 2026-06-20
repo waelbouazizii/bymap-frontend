@@ -55,12 +55,17 @@ function MediaPicker({ media, setMedia, accent }) {
   const pickFromGallery = async (type) => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') { Alert.alert('Permission refusée', "Autorisez l'accès à la galerie dans les paramètres."); return; }
+    const mediaTypes = type === 'video' ? ['videos'] : type === 'all' ? ['images', 'videos'] : ['images'];
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: type === 'video' ? ['videos'] : ['images'],
-      allowsMultipleSelection: true, quality: 0.85, videoMaxDuration: 60,
+      mediaTypes, allowsMultipleSelection: true, quality: 0.85, videoMaxDuration: 60,
     });
     if (!result.canceled) {
-      const added = result.assets.map(a => ({ uri: a.uri, type: a.type || type, fileName: a.fileName || `media_${Date.now()}`, mimeType: a.mimeType || (type === 'video' ? 'video/mp4' : 'image/jpeg') }));
+      const added = result.assets.map(a => ({
+        uri: a.uri,
+        type: a.type || (a.mimeType?.startsWith('video') ? 'video' : 'image'),
+        fileName: a.fileName || `media_${Date.now()}`,
+        mimeType: a.mimeType || (type === 'video' ? 'video/mp4' : 'image/jpeg'),
+      }));
       setMedia(prev => [...prev, ...added]);
     }
   };
@@ -81,12 +86,19 @@ function MediaPicker({ media, setMedia, accent }) {
       setMedia(prev => [...prev, { uri: asset.uri, type, fileName: asset.fileName || `media_${Date.now()}`, mimeType: asset.mimeType || (type === 'video' ? 'video/mp4' : 'image/jpeg') }]);
     }
   };
-  const showOptions = () => Alert.alert('Ajouter des médias', '', [
-    { text: 'Photos depuis la galerie',    onPress: () => pickFromGallery('image') },
-    { text: 'Vidéos depuis la galerie',    onPress: () => pickFromGallery('video') },
-    { text: 'Prendre une photo / vidéo',   onPress: pickFromCamera },
-    { text: 'Annuler', style: 'cancel' },
-  ]);
+  const showOptions = () => {
+    if (Platform.OS === 'web') {
+      // Alert.alert multi-button doesn't work on web — open file picker directly
+      pickFromGallery('all');
+      return;
+    }
+    Alert.alert('Ajouter des médias', '', [
+      { text: 'Photos depuis la galerie',    onPress: () => pickFromGallery('image') },
+      { text: 'Vidéos depuis la galerie',    onPress: () => pickFromGallery('video') },
+      { text: 'Prendre une photo / vidéo',   onPress: pickFromCamera },
+      { text: 'Annuler', style: 'cancel' },
+    ]);
+  };
   const removeMedia = (index) => setMedia(prev => prev.filter((_, i) => i !== index));
 
   return (

@@ -125,6 +125,9 @@ export default function Welcome() {
       {/* Logo */}
       <Animated.View style={[styles.logoWrap, { opacity: logoOpacity, transform: [{ scale: logoScale }] }]}>
         <Image source={LOGO} style={styles.logo} resizeMode="contain" />
+        <View style={styles.betaBadge}>
+          <Text style={styles.betaText}>BETA</Text>
+        </View>
       </Animated.View>
 
       {/* Label étape */}
@@ -161,6 +164,19 @@ const styles = StyleSheet.create({
   logo: {
     width: width * 0.4,
     height: width * 0.4,
+  },
+  betaBadge: {
+    marginTop: 10,
+    backgroundColor: '#3B7EF6',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 3,
+  },
+  betaText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.5,
   },
   stepLabel: {
     position: 'absolute',

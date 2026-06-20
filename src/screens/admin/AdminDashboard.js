@@ -476,6 +476,182 @@ const AddZoneModal = ({ visible, onClose, navigation, initialCoords, onSaved }) 
   );
 };
 
+// ── EditZoneModal ─────────────────────────────────────────────────────────────
+const EditZoneModal = ({ visible, zone, onClose, navigation, initialCoords, onSaved }) => {
+  const [nomZone,     setNomZone]     = useState('');
+  const [gouvernorat, setGouvernorat] = useState('');
+  const [ville,       setVille]       = useState('');
+  const [delegation,  setDelegation]  = useState('');
+  const [categorie,   setCategorie]   = useState('');
+  const [lat,         setLat]         = useState('');
+  const [lng,         setLng]         = useState('');
+  const [saving,      setSaving]      = useState(false);
+
+  useEffect(() => {
+    if (zone) {
+      setNomZone(zone.name || '');
+      setGouvernorat(zone.gouvernorat || '');
+      setVille(zone.ville || '');
+      setDelegation(zone.delegation || '');
+      setCategorie(zone.categorie || '');
+      setLat(zone.lat?.toString() || '');
+      setLng(zone.lng?.toString() || '');
+    }
+  }, [zone]);
+
+  useEffect(() => {
+    if (initialCoords) {
+      setLat(initialCoords.latitude.toFixed(6));
+      setLng(initialCoords.longitude.toFixed(6));
+    }
+  }, [initialCoords]);
+
+  const handlePickOnMap = async () => {
+    if (!zone) return;
+    await AsyncStorage.setItem('adminPickTarget', 'editZone');
+    await AsyncStorage.setItem('editingZoneId', zone._id);
+    onClose();
+    navigation.navigate('Map', { pickMode: true });
+  };
+
+  const handleConfirm = async () => {
+    if (!nomZone.trim()) { Alert.alert('Erreur', 'Le nom de la zone est obligatoire.'); return; }
+    if (!lat || !lng)    { Alert.alert('Erreur', 'Coordonnées manquantes.'); return; }
+    setSaving(true);
+    try {
+      const token = await getAccessToken();
+      const res = await fetch(`${API_URL}/admin/zones/${zone._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          name:        nomZone.trim(),
+          pays:        zone.pays,
+          gouvernorat: gouvernorat || undefined,
+          ville:       ville       || undefined,
+          delegation:  delegation  || undefined,
+          categorie:   categorie   || undefined,
+          lat:         parseFloat(lat),
+          lng:         parseFloat(lng),
+        }),
+      });
+      if (!res.ok) throw new Error();
+      const json = await res.json();
+      const updated = json.zone || {
+        ...zone,
+        name: nomZone.trim(), gouvernorat, ville, delegation, categorie,
+        lat: parseFloat(lat), lng: parseFloat(lng),
+      };
+      onSaved(updated);
+      Alert.alert('Zone modifiée', `"${nomZone}" a été mise à jour.`, [{ text: 'OK', onPress: onClose }]);
+    } catch {
+      Alert.alert('Erreur', "Impossible de modifier la zone.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!zone) return null;
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <View style={m.overlay}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ width: '100%', alignItems: 'center' }}>
+          <View style={m.sheet}>
+            <View style={m.sheetHandle} />
+            <View style={m.header}>
+              <View style={[m.headerIcon, { backgroundColor: C.orangeGlow }]}>
+                <FontAwesome6 name="pen-to-square" size={16} color={C.orange} />
+              </View>
+              <Text style={m.title}>Modifier la zone</Text>
+              <TouchableOpacity onPress={onClose} style={m.closeBtn} hitSlop={8}>
+                <FontAwesome6 name="xmark" size={16} color={C.textDim} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }} keyboardShouldPersistTaps="handled">
+              <Text style={m.label}>Pays</Text>
+              <View style={[m.input, { justifyContent: 'center', backgroundColor: '#F9FAFB' }]}>
+                <Text style={{ color: C.text }}>{zone.pays || '—'}</Text>
+              </View>
+
+              <Text style={m.label}>Gouvernorat</Text>
+              <TextInput style={m.input} placeholder="Gouvernorat" placeholderTextColor={C.textFaint} value={gouvernorat} onChangeText={setGouvernorat} />
+
+              <Text style={m.label}>Ville / Délégation</Text>
+              <TextInput style={m.input} placeholder="Ville" placeholderTextColor={C.textFaint} value={ville} onChangeText={setVille} />
+
+              <Text style={m.label}>Localité <Text style={m.labelOptional}>(optionnel)</Text></Text>
+              <TextInput style={m.input} placeholder="Localité" placeholderTextColor={C.textFaint} value={delegation} onChangeText={setDelegation} />
+
+              <Text style={m.label}>Nom de la Zone <Text style={m.req}>*</Text></Text>
+              <TextInput style={m.input} placeholder="Ex : Zone Ariana Centre" placeholderTextColor={C.textFaint} value={nomZone} onChangeText={setNomZone} />
+
+              <Text style={m.label}>Catégorie <Text style={m.labelOptional}>(optionnel)</Text></Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
+                <View style={{ flexDirection: 'row', gap: 8, paddingBottom: 4 }}>
+                  {[
+                    { key: 'hotel',      label: 'Hôtel',      icon: 'bed'            },
+                    { key: 'sante',      label: 'Santé',      icon: 'hospital'       },
+                    { key: 'universite', label: 'Université', icon: 'graduation-cap' },
+                    { key: 'restaurant', label: 'Restaurant', icon: 'utensils'       },
+                    { key: 'commerce',   label: 'Commerce',   icon: 'store'          },
+                    { key: 'parc',       label: 'Parc',       icon: 'tree'           },
+                    { key: 'musee',      label: 'Musée',      icon: 'landmark'       },
+                    { key: 'sport',      label: 'Sport',      icon: 'dumbbell'       },
+                    { key: 'autre',      label: 'Autre',      icon: 'ellipsis'       },
+                  ].map((cat) => (
+                    <TouchableOpacity
+                      key={cat.key}
+                      style={[m.catChip, categorie === cat.key && m.catChipActive]}
+                      onPress={() => setCategorie(categorie === cat.key ? '' : cat.key)}
+                      activeOpacity={0.8}
+                    >
+                      <FontAwesome6 name={cat.icon} size={12} color={categorie === cat.key ? C.green : C.textDim} />
+                      <Text style={[m.catChipText, categorie === cat.key && m.catChipTextActive]}>{cat.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
+
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={m.label}>Latitude</Text>
+                  <TextInput style={[m.input, lat && m.inputFilled]} placeholder="36.8000" placeholderTextColor={C.textFaint} value={lat} onChangeText={setLat} keyboardType="decimal-pad" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={m.label}>Longitude</Text>
+                  <TextInput style={[m.input, lng && m.inputFilled]} placeholder="10.1800" placeholderTextColor={C.textFaint} value={lng} onChangeText={setLng} keyboardType="decimal-pad" />
+                </View>
+              </View>
+
+              <TouchableOpacity style={m.mapBtn} onPress={handlePickOnMap} activeOpacity={0.8}>
+                <FontAwesome6 name="map" size={16} color={C.blue} />
+                <Text style={m.mapBtnText}>Mettre à jour la position sur la carte</Text>
+              </TouchableOpacity>
+
+              <View style={m.btnRow}>
+                <TouchableOpacity style={m.cancelBtn} onPress={onClose} activeOpacity={0.8}>
+                  <Text style={m.cancelText}>Annuler</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={m.confirmBtn} onPress={handleConfirm} activeOpacity={0.88} disabled={saving}>
+                  <LinearGradient colors={[C.orange, '#D97706']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={m.confirmGrad}>
+                    {saving ? <ActivityIndicator color="#fff" size="small" /> : (
+                      <>
+                        <FontAwesome6 name="check" size={13} color="#fff" style={{ marginRight: 6 }} />
+                        <Text style={m.confirmText}>Enregistrer</Text>
+                      </>
+                    )}
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </View>
+    </Modal>
+  );
+};
+
 // ── Parsing JSON zones ────────────────────────────────────────────────────────
 function parseZonesFromJson(raw) {
   if (Array.isArray(raw)) {
@@ -595,7 +771,7 @@ const imp = StyleSheet.create({
 });
 
 // ── ZonesView ─────────────────────────────────────────────────────────────────
-function ZonesView({ onBack, onAdd, onImport, onExport, zones, loading, onDelete }) {
+function ZonesView({ onBack, onAdd, onImport, onExport, zones, loading, onDelete, onEdit }) {
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       <View style={styles.subHeader}>
@@ -648,9 +824,14 @@ function ZonesView({ onBack, onAdd, onImport, onExport, zones, loading, onDelete
                 ) : null}
                 <Text style={styles.zoneCoords}>{z.lat?.toFixed(4)}, {z.lng?.toFixed(4)}</Text>
               </View>
-              <TouchableOpacity style={styles.deleteBtn} onPress={() => onDelete(z)} activeOpacity={0.75}>
-                <FontAwesome6 name="trash" size={14} color={C.red} />
-              </TouchableOpacity>
+              <View style={{ gap: 6 }}>
+                <TouchableOpacity style={styles.editBtn} onPress={() => onEdit(z)} activeOpacity={0.75}>
+                  <FontAwesome6 name="pen-to-square" size={14} color={C.orange} />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.deleteBtn} onPress={() => onDelete(z)} activeOpacity={0.75}>
+                  <FontAwesome6 name="trash" size={14} color={C.red} />
+                </TouchableOpacity>
+              </View>
             </View>
           ))}
         </ScrollView>
@@ -1227,10 +1408,13 @@ export default function AdminDashboard() {
   const [zonePickedCoords,  setZonePickedCoords]  = useState(null);
   const [zones,             setZones]             = useState([]);
   const [zonesLoading,      setZonesLoading]      = useState(false);
-  const [importModal,       setImportModal]       = useState(false);
-  const [importingTunisia,  setImportingTunisia]  = useState(false);
-  const [stats,             setStats]             = useState(null);
-  const [statsLoading,      setStatsLoading]      = useState(true);
+  const [importModal,         setImportModal]         = useState(false);
+  const [importingTunisia,    setImportingTunisia]    = useState(false);
+  const [stats,               setStats]               = useState(null);
+  const [statsLoading,        setStatsLoading]        = useState(true);
+  const [editZoneModal,       setEditZoneModal]       = useState(false);
+  const [editingZone,         setEditingZone]         = useState(null);
+  const [editZonePickedCoords,setEditZonePickedCoords]= useState(null);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -1275,8 +1459,22 @@ export default function AdminDashboard() {
     (async () => {
       const target = await AsyncStorage.getItem('adminPickTarget') || 'lieu';
       await AsyncStorage.removeItem('adminPickTarget');
-      if (target === 'zone') { setZonePickedCoords(route.params.pickedCoords); setView('zones'); setZoneModalVisible(true); }
-      else { setPickedCoords(route.params.pickedCoords); setModalVisible(true); }
+      if (target === 'zone') {
+        setZonePickedCoords(route.params.pickedCoords); setView('zones'); setZoneModalVisible(true);
+      } else if (target === 'editZone') {
+        const zoneId = await AsyncStorage.getItem('editingZoneId');
+        await AsyncStorage.removeItem('editingZoneId');
+        setZones(prev => {
+          const zone = prev.find(z => z._id === zoneId);
+          if (zone) setEditingZone(zone);
+          return prev;
+        });
+        setEditZonePickedCoords(route.params.pickedCoords);
+        setView('zones');
+        setEditZoneModal(true);
+      } else {
+        setPickedCoords(route.params.pickedCoords); setModalVisible(true);
+      }
     })();
   }, [route?.params?.pickedCoords]);
 
@@ -1316,6 +1514,16 @@ export default function AdminDashboard() {
     fetchZones();
   };
 
+  const handleEditZone = (zone) => {
+    setEditingZone(zone);
+    setEditZonePickedCoords(null);
+    setEditZoneModal(true);
+  };
+
+  const handleSaveEditZone = (updatedZone) => {
+    setZones(prev => prev.map(z => z._id === updatedZone._id ? updatedZone : z));
+  };
+
   const handleLogout = () => {
     Alert.alert('Déconnexion', 'Voulez-vous vous déconnecter du panneau admin ?', [
       { text: 'Annuler', style: 'cancel' },
@@ -1330,6 +1538,7 @@ export default function AdminDashboard() {
 
       <AddLieuModal visible={modalVisible} onClose={() => { setModalVisible(false); setPickedCoords(null); }} navigation={navigation} initialCoords={pickedCoords} />
       <AddZoneModal visible={zoneModalVisible} onClose={() => { setZoneModalVisible(false); setZonePickedCoords(null); }} navigation={navigation} initialCoords={zonePickedCoords} onSaved={(zone) => setZones(prev => [zone, ...prev])} />
+      <EditZoneModal visible={editZoneModal} zone={editingZone} onClose={() => { setEditZoneModal(false); setEditingZone(null); setEditZonePickedCoords(null); }} navigation={navigation} initialCoords={editZonePickedCoords} onSaved={handleSaveEditZone} />
       <ImportJsonModal visible={importModal} onClose={() => setImportModal(false)} onImport={handleImportZones} />
 
       {/* ── Header ── */}
@@ -1362,7 +1571,7 @@ export default function AdminDashboard() {
 
       {/* ── Contenu par onglet ── */}
       <View style={{ flex: 1 }}>
-        {view === 'zones'        && <ZonesView onBack={null} onAdd={() => setZoneModalVisible(true)} onImport={() => setImportModal(true)} onExport={handleExportZones} zones={zones} loading={zonesLoading} onDelete={handleDeleteZone} />}
+        {view === 'zones'        && <ZonesView onBack={null} onAdd={() => setZoneModalVisible(true)} onImport={() => setImportModal(true)} onExport={handleExportZones} zones={zones} loading={zonesLoading} onDelete={handleDeleteZone} onEdit={handleEditZone} />}
         {view === 'users'        && <UsersListView onBack={null} onSelectUser={(u) => { setSelectedUser(u); setView('userPosts'); }} />}
         {view === 'publications' && <PublicationsView />}
         {view === 'parametres'   && <ParametresView stats={stats} statsLoading={statsLoading} onImportTunisia={handleImportTunisia} importingTunisia={importingTunisia} onLogout={handleLogout} />}
@@ -1507,6 +1716,7 @@ const styles = StyleSheet.create({
   zonePays:    { ...T.bodyMd, fontWeight: '700', color: C.blue },
   zoneLoc:     { ...T.bodyMd, color: C.textDim },
   zoneCoords:  { ...T.bodyMd, fontSize: 11, color: C.textFaint },
+  editBtn:     { width: HIT.min - 8, height: HIT.min - 8, borderRadius: R.md, backgroundColor: C.orangeGlow, borderWidth: 1.5, borderColor: C.orange, justifyContent: 'center', alignItems: 'center' },
   deleteBtn:   { width: HIT.min - 8, height: HIT.min - 8, borderRadius: R.md, backgroundColor: C.redGlow, borderWidth: 1.5, borderColor: C.red, justifyContent: 'center', alignItems: 'center' },
 
   // User card

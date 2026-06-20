@@ -401,6 +401,7 @@ export default function LocalScreen() {
   // ── Animation FAB ──────────────────────────────────────────────────────────
   const fabPulse    = useRef(new Animated.Value(1)).current;
   const fabAnim     = useRef(null);
+  const fabHaloAnim = useRef(new Animated.Value(0.4)).current;
 
   // ── Scanner QR ────────────────────────────────────────────────────────────
   const [scannerOpen, setScannerOpen] = useState(false);
@@ -422,6 +423,15 @@ export default function LocalScreen() {
     }
     return () => { if (fabAnim.current) fabAnim.current.stop(); };
   }, [modeFilter]);
+
+  useEffect(() => {
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(fabHaloAnim, { toValue: 1,   duration: 900, useNativeDriver: true }),
+      Animated.timing(fabHaloAnim, { toValue: 0.3, duration: 900, useNativeDriver: true }),
+    ]));
+    loop.start();
+    return () => loop.stop();
+  }, []);
 
   // ── Menu latéral ───────────────────────────────────────────────────────────
   const [menuOpen, setMenuOpen] = useState(false);
@@ -760,66 +770,49 @@ export default function LocalScreen() {
         </LinearGradient>
 
         {/* ── Liste des publications ── */}
-        {loading ? (
-          <ScrollView contentContainerStyle={{ paddingTop: SP.sm }} showsVerticalScrollIndicator={false}>
-            {[1, 2, 3].map(i => <PubCardSkeleton key={i} />)}
-          </ScrollView>
-        ) : (
-          <FlatList
-            data={filtered}
-            keyExtractor={(item) => item._id}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.duo} />
-            }
-            onEndReached={onEndReached}
-            onEndReachedThreshold={0.3}
-            ListFooterComponent={
-              loadingMore ? (
-                <ActivityIndicator style={{ marginVertical: 16 }} color={C.duo} />
-              ) : null
-            }
-            renderItem={({ item }) => (
-              <PubCard
-                item={item}
-                currentUser={currentUser}
-                onPress={() => navigation.navigate('PublicationDetail', { publication: item })}
-                onContact={() => {
-                  if (!currentUser) navigation.navigate('Login');
-                  else navigation.navigate('Messages', { recipient: item.auteur });
-                }}
-              />
-            )}
-            ListEmptyComponent={
-              <EmptyState
-                icon="inbox"
-                title={t('local.noPubs')}
-                subtitle={zoneName ? t('local.noPubsZone', { zone: zoneName }) : t('local.beFirst')}
-              />
-            }
-          />
-        )}
-
-        {/* ── FAB + ── */}
-        <Animated.View style={[
-          styles.fab,
-          modeFilter === 'local' && { shadowColor: C.local, shadowOpacity: 0.5 },
-          modeFilter === 'duo'   && { shadowColor: C.duo,   shadowOpacity: 0.5 },
-          { transform: [{ scale: fabPulse }] },
-        ]}>
-          <TouchableOpacity
-            style={[
-              styles.fabInner,
-              modeFilter === 'local' && { backgroundColor: C.local },
-              modeFilter === 'duo'   && { backgroundColor: C.duo   },
-            ]}
-            activeOpacity={0.85}
-            onPress={handleFabPress}
-          >
-            <FontAwesome6 name="plus" size={22} color="#FFFFFF" />
-          </TouchableOpacity>
-        </Animated.View>
+        <View style={{ flex: 1 }}>
+          {loading ? (
+            <ScrollView style={StyleSheet.absoluteFillObject} contentContainerStyle={{ paddingTop: SP.sm }} showsVerticalScrollIndicator={false}>
+              {[1, 2, 3].map(i => <PubCardSkeleton key={i} />)}
+            </ScrollView>
+          ) : (
+            <FlatList
+              style={StyleSheet.absoluteFillObject}
+              data={filtered}
+              keyExtractor={(item) => item._id}
+              contentContainerStyle={styles.listContent}
+              showsVerticalScrollIndicator={false}
+              refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.duo} />
+              }
+              onEndReached={onEndReached}
+              onEndReachedThreshold={0.3}
+              ListFooterComponent={
+                loadingMore ? (
+                  <ActivityIndicator style={{ marginVertical: 16 }} color={C.duo} />
+                ) : null
+              }
+              renderItem={({ item }) => (
+                <PubCard
+                  item={item}
+                  currentUser={currentUser}
+                  onPress={() => navigation.navigate('PublicationDetail', { publication: item })}
+                  onContact={() => {
+                    if (!currentUser) navigation.navigate('Login');
+                    else navigation.navigate('Messages', { recipient: item.auteur });
+                  }}
+                />
+              )}
+              ListEmptyComponent={
+                <EmptyState
+                  icon="inbox"
+                  title={t('local.noPubs')}
+                  subtitle={zoneName ? t('local.noPubsZone', { zone: zoneName }) : t('local.beFirst')}
+                />
+              }
+            />
+          )}
+        </View>
 
         {/* ── Bottom Tab Bar ── */}
         <BottomTabBar activeTab="publications" navigation={navigation} isAuthenticated={!!currentUser} />
@@ -903,6 +896,20 @@ export default function LocalScreen() {
         )}
 
       </SafeAreaView>
+
+      {/* ── FAB — outside SafeAreaView so bottom:100 is relative to the screen-bounded View, not content height ── */}
+      <View style={styles.fab}>
+        <Animated.View style={[styles.fabHalo, { opacity: fabHaloAnim }]} />
+        <Animated.View style={{ transform: [{ scale: fabPulse }] }}>
+          <TouchableOpacity
+            style={styles.fabInner}
+            activeOpacity={0.85}
+            onPress={handleFabPress}
+          >
+            <FontAwesome6 name="plus" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
 
       {/* ── QR Scanner ── */}
       <Modal visible={scannerOpen} animationType="slide" onRequestClose={() => setScannerOpen(false)}>
@@ -1074,14 +1081,20 @@ const makeStyles = (colors, isDark) => StyleSheet.create({
   // ── FAB
   fab: {
     position: 'absolute', bottom: 100, right: SP.xl,
-    width: 56, height: 56, borderRadius: R.full,
-    shadowColor: '#2DBD7E',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4, shadowRadius: 14, elevation: 10,
+    width: 74, height: 74, borderRadius: 37,
+    justifyContent: 'center', alignItems: 'center',
+    shadowColor: '#FF3B30',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6, shadowRadius: 22, elevation: 14,
+  },
+  fabHalo: {
+    position: 'absolute',
+    width: 74, height: 74, borderRadius: 37,
+    backgroundColor: 'rgba(255, 59, 48, 0.25)',
   },
   fabInner: {
-    width: 56, height: 56, borderRadius: R.full,
-    backgroundColor: '#2DBD7E',
+    width: 62, height: 62, borderRadius: R.full,
+    backgroundColor: '#FF3B30',
     justifyContent: 'center', alignItems: 'center',
   },
 

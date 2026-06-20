@@ -447,36 +447,39 @@ export default function DuoScreen() {
         
 
         {/* ── Liste ── */}
-        {loading ? (
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: SP.sm }}>
-            {[1, 2, 3].map(i => <PubCardSkeleton key={i} />)}
-          </ScrollView>
-        ) : (
-          <FlatList
-            key={activeLevel}
-            data={data}
-            keyExtractor={(item) => item._id}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={lvl.color} />}
-            onEndReached={onEndReached}
-            onEndReachedThreshold={0.3}
-            ListFooterComponent={loadingMore ? <ActivityIndicator style={{ marginVertical:16 }} color={lvl.color} /> : null}
-            renderItem={({ item }) => (
-              <PubCard
-                item={item}
-                level={activeLevel}
-                currentUser={currentUser}
-                onPress={() => navigation.navigate('PublicationDetail', { publication: item })}
-                onContact={() => {
-                  if (!currentUser) navigation.navigate('Login');
-                  else navigation.navigate('Messages', { recipient: item.auteur });
-                }}
-              />
-            )}
-            
-          />
-        )}
+        <View style={{ flex: 1 }}>
+          {loading ? (
+            <ScrollView style={StyleSheet.absoluteFillObject} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: SP.sm }}>
+              {[1, 2, 3].map(i => <PubCardSkeleton key={i} />)}
+            </ScrollView>
+          ) : (
+            <FlatList
+              style={StyleSheet.absoluteFillObject}
+              key={activeLevel}
+              data={data}
+              keyExtractor={(item) => item._id}
+              contentContainerStyle={styles.listContent}
+              showsVerticalScrollIndicator={false}
+              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={lvl.color} />}
+              onEndReached={onEndReached}
+              onEndReachedThreshold={0.3}
+              ListFooterComponent={loadingMore ? <ActivityIndicator style={{ marginVertical:16 }} color={lvl.color} /> : null}
+              renderItem={({ item }) => (
+                <PubCard
+                  item={item}
+                  level={activeLevel}
+                  currentUser={currentUser}
+                  onPress={() => navigation.navigate('PublicationDetail', { publication: item })}
+                  onContact={() => {
+                    if (!currentUser) navigation.navigate('Login');
+                    else navigation.navigate('Messages', { recipient: item.auteur });
+                  }}
+                />
+              )}
+
+            />
+          )}
+        </View>
 
         {/* ── Bottom Tab Bar ── */}
         <BottomTabBar activeTab="publications" navigation={navigation} isAuthenticated={!!currentUser} />
