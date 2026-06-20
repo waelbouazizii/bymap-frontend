@@ -16,7 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const LOGO = require('../../assets/logo.png');
-import { WebView } from 'react-native-webview';
+import { WebView } from '../utils/WebView';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { cachedGeocode, cachedZone, cachedSearch } from '../utils/cache';
 import { getCurrentUser, logout as apiLogout, checkFavorite, toggleFavorite } from '../utils/api';

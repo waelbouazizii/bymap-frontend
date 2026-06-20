@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { WebView } from 'react-native-webview';
+import { WebView } from '../utils/WebView';
 import { requestRecordingPermissionsAsync, setAudioModeAsync } from 'expo-audio';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { D, shadow, R, SP, T, HIT } from '../theme/index';
