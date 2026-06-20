@@ -52,7 +52,7 @@ function fixMediaUrl(url) {
     return url;
   }
   if (Platform.OS === 'web' && window.location.protocol === 'https:') return `/api/media?path=${filename}`;
-  return `${SERVER_BASE}/uploads/${filename}`;
+  return `${SERVER_BASE}/api/media?path=${filename}`;
 }
 
 function getMediaUri(m) {

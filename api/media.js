@@ -1,8 +1,8 @@
 // Vercel serverless proxy for backend upload files.
 // Browsers block cross-origin requests to nip.io servers (tracking prevention + CORS).
-// This proxy fetches server-to-server and returns the file as a same-origin HTTPS
-// response. Tries all known backend servers sequentially so a partial deployment
-// (nginx /uploads/ fix on only some servers) still works.
+// This proxy fetches server-to-server via the backend's /api/media Express route
+// (nginx proxies /api/* to Express; /uploads/* is NOT proxied by nginx → would 403).
+// Tries all 3 backend servers so files uploaded to any one server are always found.
 export default async function handler(req, res) {
   const { path } = req.query;
   if (!path || typeof path !== 'string') { res.status(400).end(); return; }
@@ -10,10 +10,9 @@ export default async function handler(req, res) {
   const safePath = path
     .replace(/\.\./g, '')
     .replace(/^\/+/, '')
-    .replace(/[^a-zA-Z0-9._\-\/]/g, '');
+    .replace(/[^a-zA-Z0-9._\-]/g, '');
   if (!safePath) { res.status(400).end(); return; }
 
-  // Build candidate list: configured env URL first, then all known servers
   const envBase = (process.env.EXPO_PUBLIC_API_URL || '').replace('/api', '').replace(/\/$/, '');
   const candidates = [
     envBase,
@@ -24,10 +23,10 @@ export default async function handler(req, res) {
 
   for (const base of candidates) {
     try {
-      const upstream = await fetch(`${base}/uploads/${safePath}`, {
+      const upstream = await fetch(`${base}/api/media?path=${safePath}`, {
         signal: AbortSignal.timeout(3000),
       });
-      if (!upstream.ok) continue; // try next server (handles 403, 404, 5xx)
+      if (!upstream.ok) continue;
       const contentType = upstream.headers.get('content-type') || 'application/octet-stream';
       res.setHeader('Content-Type', contentType);
       res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=3600');
