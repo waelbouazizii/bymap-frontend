@@ -518,10 +518,7 @@ window.addZoneDots = function(dots) {
   });
 };
 
-// Pre-populate governorate dots immediately — no async injection needed for initial display
-addZoneDots(${JSON.stringify(
-  Object.entries(GOVERNORATE_COORDS).map(([name, c]) => ({ name, lat: c.lat, lng: c.lng, local: 0, duo: 0 }))
-)});
+// Dots are injected only after a successful API fetch — no pre-population so nothing shows when server is down.
 
 // ── Icônes SVG par catégorie — Zones admin ────────────────────────────────────
 function normCat(s) {
@@ -724,12 +721,10 @@ export default function MapScreen() {
         if (coords) dots.push({ name: z.name, lat: coords.lat, lng: coords.lng, local: z.local, duo: z.duo });
       }
 
-      // If API returns no zones, fall back to governorate centers
-      injectDots(dots.length > 0 ? dots : governorateFallback());
+      injectDots(dots);
     } catch (e) {
       console.error('[ZONE DOTS]', e);
-      // API unreachable — still show governorate centers
-      injectDots(governorateFallback());
+      injectDots([]);
     } finally {
       zoneFetchRunning = false;
       setRefreshingDots(false);
