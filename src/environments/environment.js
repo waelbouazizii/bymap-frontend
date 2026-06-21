@@ -3,7 +3,7 @@
 // active backend server. Falls back to S2 when not set.
 const _apiUrl =
   process.env.EXPO_PUBLIC_API_URL ||
-  'https://107.22.30.30.nip.io/api';
+  'https://backend-1-pqrz.onrender.com/api';
 
 export const environment = {
   production: process.env.EXPO_PUBLIC_ENV === 'production',

@@ -13,9 +13,9 @@ const _nativeFetch = global.fetch;
 
 // ── Liste des serveurs (ordre de priorité) ────────────────────────────────────
 export const SERVERS = [
-  'https://13.217.50.109.nip.io/api',   // S1 — bymap-server-1
-  'https://107.22.30.30.nip.io/api',    // S2 — bymap-server-2
-  'https://3.81.200.151.nip.io/api',    // S3 — bymap-server-3
+  'https://backend-1-pqrz.onrender.com/api',   // S1 — bymap-server-1
+  //'https://107.22.30.30.nip.io/api',    // S2 — bymap-server-2
+  //'https://3.81.200.151.nip.io/api',    // S3 — bymap-server-3
 ];
 
 const TIMEOUT_MS     = 8000;   // Timeout par tentative

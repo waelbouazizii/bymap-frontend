@@ -137,7 +137,8 @@ const PubCard = ({ item, level, onPress, onContact, currentUser }) => {
   const { colors, isDark } = useTheme();
   const cardStyles = useMemo(() => makeDuoCardStyles(colors, isDark), [colors, isDark]);
   const scaleAnim  = useRef(new Animated.Value(1)).current;
-  const heartScale = useRef(new Animated.Value(1)).current;
+  const heartScale    = useRef(new Animated.Value(1)).current;
+  const imgErroredRef = useRef(false);
 
   const [imgError,    setImgError]    = useState(false);
   const [imgLoading,  setImgLoading]  = useState(true);
@@ -154,7 +155,8 @@ const PubCard = ({ item, level, onPress, onContact, currentUser }) => {
     ? `${deb.gouvernorat} → ${fin.gouvernorat}` : (deb?.gouvernorat || '');
   const authorName    = [item.auteur?.prenom, item.auteur?.nom].filter(Boolean).join(' ') || 'Anonyme';
   const authorInitial = authorName[0]?.toUpperCase() || '?';
-  const imageUri = getMediaUri(item.medias?.find(isImageMedia));
+  const imageUri  = useMemo(() => getMediaUri(item.medias?.find(isImageMedia)), [item.medias]);
+  const imgSource = useMemo(() => imageUri ? { uri: imageUri } : null, [imageUri]);
 
   const onPressIn  = () => Animated.spring(scaleAnim, { toValue: 0.97, useNativeDriver: true, tension: 200 }).start();
   const onPressOut = () => Animated.spring(scaleAnim, { toValue: 1,    useNativeDriver: true, tension: 200 }).start();
@@ -194,10 +196,10 @@ const PubCard = ({ item, level, onPress, onContact, currentUser }) => {
         {hasImage ? (
           <View style={cardStyles.heroWrap}>
             <Image
-              source={{ uri: imageUri }} style={cardStyles.heroImage} resizeMode="cover"
-              onLoadStart={() => setImgLoading(true)}
-              onLoadEnd={() => setImgLoading(false)}
-              onError={() => { setImgError(true); setImgLoading(false); }}
+              source={imgSource} style={cardStyles.heroImage} resizeMode="cover"
+              onLoadStart={() => { if (!imgErroredRef.current) setImgLoading(true); }}
+              onLoadEnd={() => { if (!imgErroredRef.current) setImgLoading(false); }}
+              onError={() => { if (imgErroredRef.current) return; imgErroredRef.current = true; setImgError(true); setImgLoading(false); }}
             />
             {imgLoading && (
               <View style={cardStyles.imageLoader}>

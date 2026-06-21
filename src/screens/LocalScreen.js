@@ -204,7 +204,8 @@ const PubCard = ({ item, onPress, onContact, currentUser }) => {
   const cardStyles = useMemo(() => makeCardStyles(colors, isDark), [colors, isDark]);
   const { t }      = useTranslation();
   const scaleAnim  = useRef(new Animated.Value(1)).current;
-  const heartScale = useRef(new Animated.Value(1)).current;
+  const heartScale    = useRef(new Animated.Value(1)).current;
+  const imgErroredRef = useRef(false);
   const onPressIn  = () => Animated.spring(scaleAnim, { toValue: 0.97, useNativeDriver: true, tension: 200 }).start();
   const onPressOut = () => Animated.spring(scaleAnim, { toValue: 1,    useNativeDriver: true, tension: 200 }).start();
 
@@ -250,9 +251,9 @@ const PubCard = ({ item, onPress, onContact, currentUser }) => {
     ? [item.localisation?.ville, item.localisation?.gouvernorat].filter(Boolean).join(' · ')
     : [item.localisationDebut?.ville, '→', item.localisationFin?.ville].filter(Boolean).join(' ');
 
-  const firstImage = item.medias?.find(isImageMedia);
-  const imageUri   = getMediaUri(firstImage);
-  const hasImage   = !!imageUri && !imgError;
+  const imageUri  = useMemo(() => getMediaUri(item.medias?.find(isImageMedia)), [item.medias]);
+  const imgSource = useMemo(() => imageUri ? { uri: imageUri } : null, [imageUri]);
+  const hasImage  = !!imageUri && !imgError;
 
   return (
     <Animated.View style={[cardStyles.card, { shadowColor: accent, transform: [{ scale: scaleAnim }] }]}>
@@ -262,12 +263,12 @@ const PubCard = ({ item, onPress, onContact, currentUser }) => {
         {hasImage ? (
           <View style={cardStyles.heroWrap}>
             <Image
-              source={{ uri: imageUri }}
+              source={imgSource}
               style={cardStyles.heroImage}
               resizeMode="cover"
-              onLoadStart={() => setImgLoading(true)}
-              onLoadEnd={() => setImgLoading(false)}
-              onError={() => { console.warn('[ByMap] Image failed to load:', imageUri); setImgError(true); setImgLoading(false); }}
+              onLoadStart={() => { if (!imgErroredRef.current) setImgLoading(true); }}
+              onLoadEnd={() => { if (!imgErroredRef.current) setImgLoading(false); }}
+              onError={() => { if (imgErroredRef.current) return; imgErroredRef.current = true; console.warn('[ByMap] Image failed to load:', imageUri); setImgError(true); setImgLoading(false); }}
             />
             {imgLoading && <View style={cardStyles.imageLoader}><ActivityIndicator size="small" color={accent} /></View>}
             <View style={cardStyles.heroBadge}>
