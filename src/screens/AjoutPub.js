@@ -454,10 +454,20 @@ export default function AjoutePub() {
         formData.append('debut_ville', locDebut.ville); formData.append('debut_gouvernorat', locDebut.gouvernorat); formData.append('debut_delegation', locDebut.delegation);
         formData.append('fin_ville', locFin.ville); formData.append('fin_gouvernorat', locFin.gouvernorat); formData.append('fin_delegation', locFin.delegation);
       }
-      media.forEach((item, index) => {
-        const ext = item.uri.split('.').pop() || 'jpg';
-        formData.append('medias', { uri: item.uri, type: item.mimeType || (item.type === 'video' ? 'video/mp4' : 'image/jpeg'), name: item.fileName || `media_${index}.${ext}` });
-      });
+      for (let i = 0; i < media.length; i++) {
+        const item = media[i];
+        const mimeType = item.mimeType || (item.type === 'video' ? 'video/mp4' : 'image/jpeg');
+        const ext = mimeType.split('/')[1]?.replace('jpeg', 'jpg') || 'jpg';
+        const filename = item.fileName || `media_${i}.${ext}`;
+        if (Platform.OS === 'web') {
+          // Browser FormData ignores plain { uri, type, name } objects — must use real File/Blob
+          const blob = await fetch(item.uri).then(r => r.blob());
+          formData.append('medias', new File([blob], filename, { type: mimeType }), filename);
+        } else {
+          // React Native fetch polyfill handles { uri, type, name } and reads from filesystem
+          formData.append('medias', { uri: item.uri, type: mimeType, name: filename });
+        }
+      }
       const response = await fetch(`${API_URL}/publications`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData });
       const data = await response.json();
       if (!response.ok) { Alert.alert('Erreur', data.message || 'Impossible de publier'); return; }
