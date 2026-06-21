@@ -10,6 +10,7 @@ import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/nativ
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getCurrentUser } from '../utils/api';
+import { getPendingLocalUri } from '../utils/pendingUpload';
 import { getAccessToken } from '../security/secureStorage';
 import { environment } from '../environments/environment';
 import BottomTabBar from '../components/BottomTabBar';
@@ -76,10 +77,11 @@ const isImageMedia = (m) => {
 const timeAgo = (d) => {
   if (!d) return '';
   const s = (Date.now() - new Date(d)) / 1000;
-  if (s < 60)    return `${Math.floor(s)}s`;
-  if (s < 3600)  return `${Math.floor(s / 60)}min`;
-  if (s < 86400) return `${Math.floor(s / 3600)}h`;
-  return `${Math.floor(s / 86400)}j`;
+  if (s < 60)     return '< 1 min';
+  if (s < 3600)   return `${Math.floor(s / 60)} min`;
+  if (s < 86400)  return `${Math.floor(s / 3600)} h`;
+  if (s < 604800) return `${Math.floor(s / 86400)} j`;
+  return new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 };
 
 // Catégorisation côté client
@@ -119,7 +121,8 @@ const makeDuoCardStyles = (colors, isDark) => StyleSheet.create({
   cardAuthorName: { ...T.titleMd, color: colors.onSurface },
   cardRoute: { ...T.bodyMd, color: colors.onSurfaceVariant, flex: 1 },
   cardGov: { ...T.bodyMd, fontWeight: '500', marginTop: 2, fontSize: 11 },
-  cardTime: { fontSize: 11, color: colors.onSurfaceVariant, fontWeight: '500' },
+  cardTimePill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
+  cardTime: { fontSize: 12, fontWeight: '600' },
   modeBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 5, borderRadius: R.full },
   modeBadgeText: { color: '#FFFFFF', fontSize: 11, fontWeight: '700', letterSpacing: 0.3 },
   cardDesc: { ...T.bodyMd, color: colors.onSurfaceVariant, paddingHorizontal: SP.base, paddingBottom: SP.sm },
@@ -133,7 +136,7 @@ const makeDuoCardStyles = (colors, isDark) => StyleSheet.create({
 // ─────────────────────────────────────────────────────────────────────────────
 // PubCard
 // ─────────────────────────────────────────────────────────────────────────────
-const PubCard = ({ item, level, onPress, onContact, currentUser }) => {
+const PubCard = React.memo(({ item, level, onPress, onContact, currentUser }) => {
   const { colors, isDark } = useTheme();
   const cardStyles = useMemo(() => makeDuoCardStyles(colors, isDark), [colors, isDark]);
   const scaleAnim  = useRef(new Animated.Value(1)).current;
@@ -155,7 +158,7 @@ const PubCard = ({ item, level, onPress, onContact, currentUser }) => {
     ? `${deb.gouvernorat} → ${fin.gouvernorat}` : (deb?.gouvernorat || '');
   const authorName    = [item.auteur?.prenom, item.auteur?.nom].filter(Boolean).join(' ') || 'Anonyme';
   const authorInitial = authorName[0]?.toUpperCase() || '?';
-  const imageUri  = useMemo(() => getMediaUri(item.medias?.find(isImageMedia)), [item.medias]);
+  const imageUri  = useMemo(() => getPendingLocalUri(item) || getMediaUri(item.medias?.find(isImageMedia)), [item]);
   const imgSource = useMemo(() => imageUri ? { uri: imageUri } : null, [imageUri]);
 
   const onPressIn  = () => Animated.spring(scaleAnim, { toValue: 0.97, useNativeDriver: true, tension: 200 }).start();
@@ -227,7 +230,10 @@ const PubCard = ({ item, level, onPress, onContact, currentUser }) => {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
                 <FontAwesome6 name="route" size={11} color={C.textFaint} />
                 <Text style={cardStyles.cardRoute} numberOfLines={1}>{routeLine}</Text>
-                <Text style={cardStyles.cardTime}>{timeAgo(item.createdAt)}</Text>
+                <View style={[cardStyles.cardTimePill, { backgroundColor: colors.surfaceVariant }]}>
+                  <FontAwesome6 name="clock" size={10} color={lvl.color} />
+                  <Text style={[cardStyles.cardTime, { color: lvl.color }]}>{timeAgo(item.createdAt)}</Text>
+                </View>
               </View>
             ) : null}
             {govLine ? (
@@ -283,7 +289,7 @@ const PubCard = ({ item, level, onPress, onContact, currentUser }) => {
       </TouchableOpacity>
     </Animated.View>
   );
-};
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Écran principal

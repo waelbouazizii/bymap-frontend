@@ -1,9 +1,9 @@
 // Vercel serverless proxy for backend upload files.
-// Browsers block cross-origin requests to nip.io servers (tracking prevention + CORS).
-// Tries two strategies in parallel:
-//   1. Via nginx HTTPS: GET /api/media?path=... on each backend (requires backend Express route)
-//   2. Direct to Express HTTP port 5000/3000: GET /uploads/filename (bypasses nginx, uses static middleware)
-// Promise.any returns on first success across all 12 parallel attempts.
+// Bypasses browser CORS/tracking restrictions by fetching server-to-server.
+// Backend is on Render.com — no nginx, so Express static middleware (/uploads/) is
+// directly accessible over HTTPS. Tries two strategies in parallel:
+//   1. /api/media?path=filename  (if backend has an Express media route)
+//   2. /uploads/filename         (Express express.static('uploads') middleware)
 export default async function handler(req, res) {
   const { path } = req.query;
   if (!path || typeof path !== 'string') { res.status(400).end(); return; }
@@ -15,33 +15,29 @@ export default async function handler(req, res) {
   if (!safePath) { res.status(400).end(); return; }
 
   const envBase = (process.env.EXPO_PUBLIC_API_URL || '').replace('/api', '').replace(/\/$/, '');
-  const candidates = [
-    envBase,
-    'https://13.217.50.109.nip.io',
-    'https://107.22.30.30.nip.io',
-    'https://3.81.200.151.nip.io',
-  ].filter(Boolean).filter((v, i, arr) => arr.indexOf(v) === i);
+  const renderBase = 'https://backend-1-pqrz.onrender.com';
+  const candidates = [envBase, renderBase]
+    .filter(Boolean)
+    .filter((v, i, arr) => arr.indexOf(v) === i);
 
-  // Strategy 1: via nginx HTTPS — requires backend /api/media Express route
-  const tryServer = (base, p) =>
+  // Strategy 1: via /api/media Express route
+  const tryApiRoute = (base, p) =>
     fetch(`${base}/api/media?path=${encodeURIComponent(p)}`, {
-      signal: AbortSignal.timeout(8000),
-    }).then(r => { if (!r.ok) throw new Error(`nginx:${base} ${r.status}`); return r; });
+      signal: AbortSignal.timeout(10000),
+    }).then(r => { if (!r.ok) throw new Error(`api:${base} ${r.status}`); return r; });
+
+  // Strategy 2: direct /uploads/ (no nginx on Render — Express static serves this)
+  const tryUploads = (base) =>
+    fetch(`${base}/uploads/${encodeURIComponent(safePath)}`, {
+      signal: AbortSignal.timeout(10000),
+    }).then(r => { if (!r.ok) throw new Error(`uploads:${base} ${r.status}`); return r; });
 
   const pathVariants = [safePath, `uploads/${safePath}`];
 
-  // Strategy 2: direct to Express (bypasses nginx) — serves via express.static('uploads')
-  const rawIPs = ['13.217.50.109', '107.22.30.30', '3.81.200.151'];
-  const directPorts = [5000, 3000];
-  const tryDirect = (ip, port) =>
-    fetch(`http://${ip}:${port}/uploads/${encodeURIComponent(safePath)}`, {
-      signal: AbortSignal.timeout(8000),
-    }).then(r => { if (!r.ok) throw new Error(`direct:${ip}:${port} ${r.status}`); return r; });
-
   try {
     const upstream = await Promise.any([
-      ...candidates.flatMap(base => pathVariants.map(p => tryServer(base, p))),
-      ...rawIPs.flatMap(ip => directPorts.map(port => tryDirect(ip, port))),
+      ...candidates.flatMap(base => pathVariants.map(p => tryApiRoute(base, p))),
+      ...candidates.map(base => tryUploads(base)),
     ]);
     const contentType = upstream.headers.get('content-type') || 'application/octet-stream';
     res.setHeader('Content-Type', contentType);

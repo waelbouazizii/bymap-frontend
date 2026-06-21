@@ -14,6 +14,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { getAccessToken } from '../security/secureStorage';
 import TUNISIA from '../../assets/tunisia.json';
 import { environment } from '../environments/environment';
+import { setPendingUpload } from '../utils/pendingUpload';
 
 const API_URL = environment.apiUrl;
 
@@ -471,6 +472,9 @@ export default function AjoutePub() {
       const response = await fetch(`${API_URL}/publications`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData });
       const data = await response.json();
       if (!response.ok) { Alert.alert('Erreur', data.message || 'Impossible de publier'); return; }
+
+      // Cache local URIs so the new post shows its image instantly in the list
+      setPendingUpload(mode, media.map(m => m.uri).filter(Boolean));
 
       // ── Alertes post-publication ──────────────────────────────────────────────
       let msg = 'Votre annonce a bien été enregistrée.';

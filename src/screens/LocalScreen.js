@@ -25,6 +25,7 @@ import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/nativ
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getCurrentUser, logout as apiLogout, checkFavorite, toggleFavorite } from '../utils/api';
+import { getPendingLocalUri } from '../utils/pendingUpload';
 import { getAccessToken } from '../security/secureStorage';
 import TUNISIA from '../../assets/tunisia.json';
 import { useTranslation } from 'react-i18next';
@@ -110,10 +111,11 @@ const isImageMedia = (m) => {
 const timeAgo = (dateStr) => {
   if (!dateStr) return '';
   const diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
-  if (diff < 60)   return `${Math.floor(diff)}s`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}min`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
-  return `${Math.floor(diff / 86400)}j`;
+  if (diff < 60)     return '< 1 min';
+  if (diff < 3600)   return `${Math.floor(diff / 60)} min`;
+  if (diff < 86400)  return `${Math.floor(diff / 3600)} h`;
+  if (diff < 604800) return `${Math.floor(diff / 86400)} j`;
+  return new Date(dateStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 };
 
 // ── Static brand colors (not theme-sensitive)
@@ -175,7 +177,8 @@ const makeCardStyles = (colors, isDark) => StyleSheet.create({
   cardAuthorName: { ...T.titleMd, color: colors.onSurface },
   cardMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
   cardLocation: { ...T.bodyMd, color: colors.onSurfaceVariant, flex: 1 },
-  cardTime: { fontSize: 11, color: colors.onSurfaceVariant, fontWeight: '500' },
+  cardTimePill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
+  cardTime: { fontSize: 12, fontWeight: '600' },
   modeBadge: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: R.full },
   modeBadgeText: { color: '#FFFFFF', fontSize: 11, fontWeight: '700', letterSpacing: 0.3 },
   cardDesc: {
@@ -199,7 +202,7 @@ const makeCardStyles = (colors, isDark) => StyleSheet.create({
 // ─────────────────────────────────────────────────────────────────────────────
 // Composant PubCard — carte LOCAL (vert) ou DUO (bleu)
 // ─────────────────────────────────────────────────────────────────────────────
-const PubCard = ({ item, onPress, onContact, currentUser }) => {
+const PubCard = React.memo(({ item, onPress, onContact, currentUser }) => {
   const { colors, isDark } = useTheme();
   const cardStyles = useMemo(() => makeCardStyles(colors, isDark), [colors, isDark]);
   const { t }      = useTranslation();
@@ -251,7 +254,7 @@ const PubCard = ({ item, onPress, onContact, currentUser }) => {
     ? [item.localisation?.ville, item.localisation?.gouvernorat].filter(Boolean).join(' · ')
     : [item.localisationDebut?.ville, '→', item.localisationFin?.ville].filter(Boolean).join(' ');
 
-  const imageUri  = useMemo(() => getMediaUri(item.medias?.find(isImageMedia)), [item.medias]);
+  const imageUri  = useMemo(() => getPendingLocalUri(item) || getMediaUri(item.medias?.find(isImageMedia)), [item]);
   const imgSource = useMemo(() => imageUri ? { uri: imageUri } : null, [imageUri]);
   const hasImage  = !!imageUri && !imgError;
 
@@ -293,7 +296,10 @@ const PubCard = ({ item, onPress, onContact, currentUser }) => {
                   <Text style={cardStyles.cardLocation} numberOfLines={1}>{locLine}</Text>
                 </View>
               ) : null}
-              <Text style={cardStyles.cardTime}>{timeAgo(item.createdAt)}</Text>
+              <View style={[cardStyles.cardTimePill, { backgroundColor: isLocal ? BRAND.localGlow : BRAND.duoGlow }]}>
+                <FontAwesome6 name="clock" size={10} color={accent} />
+                <Text style={[cardStyles.cardTime, { color: accent }]}>{timeAgo(item.createdAt)}</Text>
+              </View>
             </View>
           </View>
           {/* Mode badge only when there's no hero image */}
@@ -348,7 +354,7 @@ const PubCard = ({ item, onPress, onContact, currentUser }) => {
       </TouchableOpacity>
     </Animated.View>
   );
-};
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Écran principal
